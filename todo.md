@@ -1,6 +1,6 @@
 ## Features
 
-- What percentage of the time AND movement is in each quadrant?
+- Progress bar while working on the video
 
 ## Tauri
 

@@ -235,6 +235,10 @@ def euclidean_cm(p1, p2, scale_x: float, scale_y: float) -> float:
 # ─────────────────────────────────────────────
 
 def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0):
+    # Ensure grayscale input
+    if len(frame.shape) == 3:
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
     fg_mask = subtractor.apply(frame)
 
     if pool_mask is not None:
@@ -356,9 +360,9 @@ def main(video_path: str):
         r_cm    = cfg["pool_radius_cm"]
         scale_x = r_cm / rx   # cm per pixel, horizontal axis
         scale_y = r_cm / ry   # cm per pixel, vertical axis
+        print(f"Pool radius: {r_cm} cm")
         print(f"Pool ellipse → centre=({cx},{cy}), rx={rx}px, ry={ry}px")
         print(f"Scale factors → x: {scale_x:.4f} cm/px  |  y: {scale_y:.4f} cm/px")
-        print(f"Pool radius: {r_cm} cm")
     else:
         print("Pool boundary disabled — using full frame. CM distance unavailable.")
 
@@ -388,8 +392,11 @@ def main(video_path: str):
         if not ret:
             break
 
+        # Convert to grayscale for detection
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
         timestamp = frame_idx / fps
-        pos       = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx)
+        pos       = detect_rat(gray, subtractor, cfg, pool_mask, pool, frame_idx)
 
         if pos and prev_pos:
             running_dist_px += euclidean_px(prev_pos, pos)

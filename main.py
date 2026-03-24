@@ -21,6 +21,7 @@ DEFAULTS = {
     "max_contour_area":   12000,
     "trail_len":          40,
     "debug_frames":       0,
+    "pool_radius_cm":     60,
     "pool_west":          None,
     "pool_north":         None,
     "pool_east":          None,
@@ -28,10 +29,11 @@ DEFAULTS = {
 }
 
 CONFIG_FILE = Path(__file__).parent / "config.json"
+OUTPUT_DIR  = Path(__file__).parent / "output"
 
 
 # ─────────────────────────────────────────────
-# CONFIG  I/O
+# CONFIG I/O
 # ─────────────────────────────────────────────
 
 def load_config() -> dict:
@@ -39,10 +41,7 @@ def load_config() -> dict:
         try:
             with open(CONFIG_FILE, "r") as f:
                 saved = json.load(f)
-            # Merge: saved values override defaults,
-            # but new keys added to DEFAULTS still appear.
             cfg = {**DEFAULTS, **saved}
-            # Convert pool point lists back to tuples
             for key in ("pool_west", "pool_north", "pool_east", "pool_south"):
                 if cfg[key] is not None:
                     cfg[key] = tuple(cfg[key])
@@ -54,7 +53,6 @@ def load_config() -> dict:
 
 
 def save_config(cfg: dict):
-    # Convert tuples to lists for JSON serialisation
     serialisable = {}
     for k, v in cfg.items():
         serialisable[k] = list(v) if isinstance(v, tuple) else v
@@ -69,7 +67,7 @@ def pool_coords_valid(cfg: dict) -> bool:
 
 
 # ─────────────────────────────────────────────
-# POOL CALIBRATION  (cv2 interactive picker)
+# POOL CALIBRATION (cv2 interactive picker)
 # ─────────────────────────────────────────────
 
 CALIB_STEPS = [
@@ -80,10 +78,10 @@ CALIB_STEPS = [
 ]
 
 CALIB_COLORS = {
-    "WEST":  (255, 140,   0),   # orange
-    "NORTH": ( 50, 205,  50),   # lime
-    "EAST":  ( 30, 144, 255),   # dodger blue
-    "SOUTH": (238,  58, 140),   # deep pink
+    "WEST":  (255, 140,   0),
+    "NORTH": ( 50, 205,  50),
+    "EAST":  ( 30, 144, 255),
+    "SOUTH": (238,  58, 140),
 }
 
 
@@ -94,7 +92,7 @@ def run_calibration(frame: np.ndarray) -> dict | None:
     """
     state = {
         "step":   0,
-        "points": {},   # cardinal → (x, y)
+        "points": {},
         "frame":  frame.copy(),
     }
 
@@ -104,7 +102,6 @@ def run_calibration(frame: np.ndarray) -> dict | None:
 
     def draw(base):
         img = base.copy()
-        # HUD panel background
         cv2.rectangle(img, (0, 0), (frame.shape[1], 70), (0, 0, 0), -1)
 
         step = state["step"]
@@ -121,7 +118,6 @@ def run_calibration(frame: np.ndarray) -> dict | None:
             cv2.putText(img, "Press  ESC  to abort without saving",
                         (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
 
-        # Draw confirmed points
         for cardinal, pt in state["points"].items():
             col = CALIB_COLORS[cardinal]
             cv2.circle(img, pt, 7, col, -1)
@@ -129,12 +125,11 @@ def run_calibration(frame: np.ndarray) -> dict | None:
             cv2.putText(img, cardinal, (pt[0] + 11, pt[1] + 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
 
-        # Draw ellipse preview once all 4 points are set
         if len(state["points"]) == 4:
-            p = state["points"]
+            p  = state["points"]
             cx = (p["WEST"][0] + p["EAST"][0])  // 2
             cy = (p["NORTH"][1] + p["SOUTH"][1]) // 2
-            rx = (p["EAST"][0] - p["WEST"][0])  // 2
+            rx = (p["EAST"][0]  - p["WEST"][0])  // 2
             ry = (p["SOUTH"][1] - p["NORTH"][1]) // 2
             cv2.ellipse(img, (cx, cy), (rx, ry), 0, 0, 360, (100, 255, 180), 2)
             cv2.circle(img, (cx, cy), 5, (100, 255, 180), -1)
@@ -166,17 +161,15 @@ def run_calibration(frame: np.ndarray) -> dict | None:
     while True:
         key = cv2.waitKey(20) & 0xFF
 
-        if key == 27:   # ESC — abort
+        if key == 27:
             print("Calibration aborted.")
             break
-
-        elif key in (ord('r'), ord('R')):   # Redo
+        elif key in (ord('r'), ord('R')):
             state["step"]   = 0
             state["points"] = {}
             cv2.imshow(window, draw(state["frame"]))
             print("Points cleared — starting over.")
-
-        elif key in (13, 10):   # ENTER — confirm
+        elif key in (13, 10):
             if state["step"] == 4:
                 p = state["points"]
                 result = {
@@ -188,10 +181,8 @@ def run_calibration(frame: np.ndarray) -> dict | None:
                 print("Calibration confirmed.")
                 break
             else:
-                remaining = 4 - state["step"]
-                print(f"Please click {remaining} more point(s) before confirming.")
+                print(f"Please click {4 - state['step']} more point(s) before confirming.")
 
-        # Redraw on every loop tick so the window stays responsive
         cv2.imshow(window, draw(state["frame"]))
 
     cv2.destroyWindow(window)
@@ -220,8 +211,23 @@ def point_in_ellipse(x, y, cx, cy, rx, ry) -> bool:
     return ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1.0
 
 
-def euclidean(p1, p2) -> float:
+def euclidean_px(p1, p2) -> float:
     return math.sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2)
+
+
+def euclidean_cm(p1, p2, scale_x: float, scale_y: float) -> float:
+    """
+    Real-world distance accounting for perspective warp.
+    The pool is circular in reality but appears as an ellipse on screen,
+    so we apply independent per-axis scale factors to correct for it:
+        scale_x = pool_radius_cm / rx_pixels
+        scale_y = pool_radius_cm / ry_pixels
+    A pixel step horizontally and a pixel step vertically
+    represent different real-world distances — this corrects for that.
+    """
+    dx = (p2[0] - p1[0]) * scale_x
+    dy = (p2[1] - p1[1]) * scale_y
+    return math.sqrt(dx ** 2 + dy ** 2)
 
 
 # ─────────────────────────────────────────────
@@ -309,10 +315,10 @@ def main(video_path: str):
     cfg = load_config()
 
     # ── Open video ──
-    cap      = cv2.VideoCapture(str(video_path))
-    fps      = cap.get(cv2.CAP_PROP_FPS) or 4.0
-    frame_h  = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    frame_w  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    cap          = cv2.VideoCapture(str(video_path))
+    fps          = cap.get(cv2.CAP_PROP_FPS) or 4.0
+    frame_h      = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    frame_w      = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     print(f"Video : {video_path.name} | {frame_w}x{frame_h} | "
           f"FPS: {fps:.2f} | Frames: {total_frames}")
@@ -333,12 +339,13 @@ def main(video_path: str):
     else:
         print("Pool coordinates loaded from config — skipping calibration.")
 
-    # Reset video to beginning after reading first frame
     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-    # ── Pool ellipse setup ──
+    # ── Pool ellipse + scale factors ──
     pool      = None
     pool_mask = None
+    scale_x   = scale_y = None
+
     if pool_coords_valid(cfg):
         pool = pool_ellipse_from_nsew(
             cfg["pool_west"], cfg["pool_north"],
@@ -346,13 +353,18 @@ def main(video_path: str):
         )
         pool_mask = make_ellipse_mask((frame_h, frame_w), *pool)
         cx, cy, rx, ry = pool
+        r_cm    = cfg["pool_radius_cm"]
+        scale_x = r_cm / rx   # cm per pixel, horizontal axis
+        scale_y = r_cm / ry   # cm per pixel, vertical axis
         print(f"Pool ellipse → centre=({cx},{cy}), rx={rx}px, ry={ry}px")
+        print(f"Scale factors → x: {scale_x:.4f} cm/px  |  y: {scale_y:.4f} cm/px")
+        print(f"Pool radius: {r_cm} cm")
     else:
-        print("Pool boundary disabled — using full frame.")
+        print("Pool boundary disabled — using full frame. CM distance unavailable.")
 
-    # ── Output paths ──
-    out_dir   = video_path.parent
-    video_out = out_dir / (video_path.stem + "_tracked.mp4")
+    # ── Output directory ──
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    video_out = OUTPUT_DIR / (video_path.stem + "_tracked.mp4")
     fourcc    = cv2.VideoWriter_fourcc(*"mp4v")
     writer    = cv2.VideoWriter(str(video_out), fourcc, fps, (frame_w, frame_h))
 
@@ -364,11 +376,12 @@ def main(video_path: str):
     )
 
     # ── Tracking loop ──
-    records      = []
-    trail        = []
-    frame_idx    = 0
-    running_dist = 0.0
-    prev_pos     = None
+    records         = []
+    trail           = []
+    frame_idx       = 0
+    running_dist_px = 0.0
+    running_dist_cm = 0.0
+    prev_pos        = None
 
     while True:
         ret, frame = cap.read()
@@ -379,7 +392,9 @@ def main(video_path: str):
         pos       = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx)
 
         if pos and prev_pos:
-            running_dist += euclidean(prev_pos, pos)
+            running_dist_px += euclidean_px(prev_pos, pos)
+            if scale_x is not None:
+                running_dist_cm += euclidean_cm(prev_pos, pos, scale_x, scale_y)
         if pos:
             prev_pos = pos
 
@@ -421,14 +436,16 @@ def main(video_path: str):
         status    = "DETECTED" if pos else "MISSING"
         hud_color = (0, 210, 0) if pos else (0, 0, 210)
         pos_str   = f"({pos[0]}, {pos[1]})" if pos else "n/a"
-        cv2.rectangle(annotated, (5, 5), (300, 100), (0, 0, 0), -1)
+        hud_dist  = (f"{running_dist_px:.1f} px  |  {running_dist_cm:.1f} cm"
+                     if scale_x is not None else f"{running_dist_px:.1f} px")
+        cv2.rectangle(annotated, (5, 5), (340, 100), (0, 0, 0), -1)
         cv2.putText(annotated, f"Frame: {frame_idx:>4}   t = {timestamp:.2f}s",
                     (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1)
         cv2.putText(annotated, f"Position: {pos_str}",
                     (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1)
         cv2.putText(annotated, status,
                     (10, 72), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hud_color, 1)
-        cv2.putText(annotated, f"Distance: {running_dist:.1f} px",
+        cv2.putText(annotated, f"Dist: {hud_dist}",
                     (10, 95), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 200, 50), 1)
 
         writer.write(annotated)
@@ -448,8 +465,23 @@ def main(video_path: str):
         print(f"Warning: {missing_after} frame(s) have no position "
               "(at start/end of video with no neighbours to interpolate from).")
 
+    # ── Recalculate final distances from interpolated records ──
+    total_dist_px = 0.0
+    total_dist_cm = 0.0
+    valid_pairs   = 0
+    prev          = None
+    for rec in records:
+        if rec["x"] is not None:
+            curr = (rec["x"], rec["y"])
+            if prev is not None:
+                total_dist_px += euclidean_px(prev, curr)
+                if scale_x is not None:
+                    total_dist_cm += euclidean_cm(prev, curr, scale_x, scale_y)
+                valid_pairs += 1
+            prev = curr
+
     # ── CSV ──
-    csv_path = out_dir / f"{video_path.stem}_coordinates.csv"
+    csv_path = OUTPUT_DIR / f"{video_path.stem}_coordinates.csv"
     with open(csv_path, "w", newline="") as f:
         writer_csv = csv.DictWriter(
             f, fieldnames=["frame", "timestamp_s", "x", "y", "interpolated"])
@@ -458,18 +490,7 @@ def main(video_path: str):
     print(f"Coordinates saved → {csv_path}")
 
     # ── Summary ──
-    total_distance = 0.0
-    valid_pairs    = 0
-    prev           = None
-    for rec in records:
-        if rec["x"] is not None:
-            curr = (rec["x"], rec["y"])
-            if prev is not None:
-                total_distance += euclidean(prev, curr)
-                valid_pairs    += 1
-            prev = curr
-
-    summary_path = out_dir / f"{video_path.stem}_summary.txt"
+    summary_path = OUTPUT_DIR / f"{video_path.stem}_summary.txt"
     with open(summary_path, "w") as f:
         lines = [
             f"Video           : {video_path.name}",
@@ -482,16 +503,34 @@ def main(video_path: str):
             f"Interpolated    : {sum(1 for r in records if r['interpolated'])}",
             f"Missing (no pos): {missing_after}",
             f"",
-            f"Total distance swum : {total_distance:.2f} pixels",
-            f"  (over {valid_pairs} consecutive frame pairs)",
-            f"",
-            f"Note: convert to real units using:",
-            f"  scale (cm/px) = tank_real_diameter_cm / tank_diameter_in_pixels",
+            f"Pool radius     : {cfg['pool_radius_cm']} cm",
         ]
+        if scale_x is not None:
+            lines += [
+                f"Scale X         : {scale_x:.4f} cm/px  (horizontal)",
+                f"Scale Y         : {scale_y:.4f} cm/px  (vertical)",
+                f"",
+                f"Total distance  : {total_dist_px:.2f} px",
+                f"Total distance  : {total_dist_cm:.2f} cm",
+                f"  (over {valid_pairs} consecutive frame pairs)",
+            ]
+        else:
+            lines += [
+                f"",
+                f"Total distance  : {total_dist_px:.2f} px",
+                f"Total distance  : n/a cm  (pool not calibrated)",
+                f"  (over {valid_pairs} consecutive frame pairs)",
+            ]
         f.write("\n".join(lines))
 
     print(f"Summary saved   → {summary_path}")
-    print(f"\nTotal distance swum: {total_distance:.2f} pixels")
+    print(f"\n── Results ───────────────────────────────────────")
+    print(f"Total distance  : {total_dist_px:.2f} px")
+    if scale_x is not None:
+        print(f"Total distance  : {total_dist_cm:.2f} cm")
+    else:
+        print(f"Total distance  : n/a cm  (pool not calibrated)")
+    print(f"──────────────────────────────────────────────────")
 
 
 if __name__ == "__main__":

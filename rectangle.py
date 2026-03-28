@@ -11,7 +11,7 @@ from pathlib import Path
 # ─────────────────────────────────────────────
 DEFAULTS = {
     "mog2_history":       120,
-    "mog2_threshold":     40,
+    "mog2_threshold":     20,        # ↓ was 40 — more sensitive to low-contrast rats
     "mog2_detect_shadow": False,
     "morph_open_k":       3,
     "morph_close_k":      15,
@@ -24,6 +24,12 @@ DEFAULTS = {
     "pool_ne":            None,
     "pool_sw":            None,
     "pool_se":            None,
+    # ── CLAHE ──────────────────────────────────
+    "clahe_clip_limit":   2.0,       # contrast amplification ceiling per tile
+    "clahe_tile_size":    8,         # grid tile size (NxN); smaller = more local
+    # ── Nearest-neighbour gating ───────────────
+    "max_jump_px":        80,        # reject detections farther than this from last pos
+    "gate_warmup_frames": 10,        # frames before gating activates (lets MOG2 settle)
 }
 
 CONFIG_FILE = Path(__file__).parent / "config.json"
@@ -47,6 +53,7 @@ def load_config() -> dict:
         try:
             with open(CONFIG_FILE, "r") as f:
                 saved = json.load(f)
+            # Merge with DEFAULTS so new keys always have a value
             cfg = {**DEFAULTS, **saved}
             for key in ("pool_nw", "pool_ne", "pool_sw", "pool_se"):
                 if cfg[key] is not None:
@@ -129,10 +136,8 @@ def run_calibration(frame: np.ndarray) -> dict | None:
 
         if len(state["points"]) == 4:
             p = state["points"]
-            # Draw the rectangle outline using the 4 corners
             pts = np.array([p["NW"], p["NE"], p["SE"], p["SW"]], dtype=np.int32)
             cv2.polylines(img, [pts], isClosed=True, color=(100, 255, 180), thickness=2)
-            # Draw centre cross
             cx, cy = pool_centre_from_corners(p["NW"], p["NE"], p["SW"], p["SE"])
             cv2.circle(img, (cx, cy), 5, (100, 255, 180), -1)
             cv2.line(img, (p["NW"][0], cy), (p["NE"][0], cy), (100, 255, 180), 1)
@@ -157,7 +162,7 @@ def run_calibration(frame: np.ndarray) -> dict | None:
 
     print("\n── Pool Calibration (Rectangle) ──────────────────")
     print("Click the 4 corners of the rectangular pool.")
-    print("Order: NW (top-left) → NE (top-right) → SW (bottom-left) → SE (bottom-right)")
+    print("Order: NW → NE → SW → SE")
     print("R = redo all   |   ENTER = confirm   |   ESC = abort")
     print("──────────────────────────────────────────────────\n")
 
@@ -196,31 +201,24 @@ def run_calibration(frame: np.ndarray) -> dict | None:
 # ─────────────────────────────────────────────
 
 def pool_centre_from_corners(nw, ne, sw, se):
-    """Return integer (cx, cy) as the mean of the 4 corners."""
     cx = int(round((nw[0] + ne[0] + sw[0] + se[0]) / 4))
     cy = int(round((nw[1] + ne[1] + sw[1] + se[1]) / 4))
     return cx, cy
 
 
 def pool_rect_bounds(nw, ne, sw, se):
-    """
-    Return (cx, cy, half_w, half_h) for the axis-aligned bounding rectangle
-    defined by the 4 corners.  half_w and half_h correspond to rx/ry in the
-    original ellipse code so the rest of the pipeline is minimally changed.
-    """
     x_min = min(nw[0], ne[0], sw[0], se[0])
     x_max = max(nw[0], ne[0], sw[0], se[0])
     y_min = min(nw[1], ne[1], sw[1], se[1])
     y_max = max(nw[1], ne[1], sw[1], se[1])
     cx = int(round((x_min + x_max) / 2))
     cy = int(round((y_min + y_max) / 2))
-    rx = int(round((x_max - x_min) / 2))   # half-width  (px)
-    ry = int(round((y_max - y_min) / 2))   # half-height (px)
+    rx = int(round((x_max - x_min) / 2))
+    ry = int(round((y_max - y_min) / 2))
     return cx, cy, rx, ry, x_min, x_max, y_min, y_max
 
 
 def make_rect_mask(shape, x_min, x_max, y_min, y_max):
-    """Binary mask filled inside the axis-aligned rectangle."""
     mask = np.zeros(shape[:2], dtype=np.uint8)
     cv2.rectangle(mask, (x_min, y_min), (x_max, y_max), 255, -1)
     return mask
@@ -241,7 +239,6 @@ def euclidean_cm(p1, p2, scale_x: float, scale_y: float) -> float:
 
 
 def get_quadrant(x, y, cx, cy) -> str:
-    """Return quadrant name for a point relative to pool centre."""
     if x >= cx and y < cy:
         return "NE"
     elif x < cx and y < cy:
@@ -253,11 +250,6 @@ def get_quadrant(x, y, cx, cy) -> str:
 
 
 def segment_quadrant_splits(p1, p2, cx, cy):
-    """
-    Split a line segment (p1 → p2) at quadrant boundaries (x=cx and y=cy).
-    Returns a list of (sub_p1, sub_p2, quadrant_name) covering the full segment
-    in order, where each sub-segment lies entirely within one quadrant.
-    """
     x1, y1 = p1
     x2, y2 = p2
     dx = x2 - x1
@@ -371,14 +363,91 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm):
 
 
 # ─────────────────────────────────────────────
+# PREPROCESSING
+# ─────────────────────────────────────────────
+
+def make_clahe(cfg: dict) -> cv2.CLAHE:
+    """Create a CLAHE object from config parameters."""
+    tile = cfg["clahe_tile_size"]
+    return cv2.createCLAHE(
+        clipLimit    = cfg["clahe_clip_limit"],
+        tileGridSize = (tile, tile),
+    )
+
+
+def preprocess_frame(gray: np.ndarray, clahe: cv2.CLAHE) -> np.ndarray:
+    """
+    Apply preprocessing to a grayscale frame before feeding MOG2.
+
+    Pipeline:
+      1. Gaussian blur  — suppresses compression noise / sensor grain
+      2. CLAHE          — locally boosts contrast so rat stands out from water
+    """
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    enhanced = clahe.apply(blurred)
+    return enhanced
+
+
+# ─────────────────────────────────────────────
+# NEAREST-NEIGHBOUR GATING
+# ─────────────────────────────────────────────
+
+def gate_detection(candidate, prev_pos, frame_idx: int, cfg: dict):
+    """
+    Accept or reject a raw detection based on proximity to the last
+    known position.
+
+    Rules:
+    - During warmup (frame_idx < gate_warmup_frames): always accept.
+      MOG2 hasn't built a stable background model yet so candidates
+      are unreliable — gating them would discard real first detections.
+    - If no previous position exists: accept (establishes first lock).
+    - If distance from prev_pos > max_jump_px: reject (return None).
+      A rat can only move so far between frames; big jumps are noise.
+    - Otherwise: accept.
+
+    Returns the candidate unchanged if accepted, None if rejected.
+    """
+    if candidate is None:
+        return None
+
+    if frame_idx < cfg["gate_warmup_frames"]:
+        return candidate
+
+    if prev_pos is None:
+        return candidate
+
+    dist = euclidean_px(prev_pos, candidate)
+    if dist > cfg["max_jump_px"]:
+        return None
+
+    return candidate
+
+
+# ─────────────────────────────────────────────
 # RAT DETECTION
 # ─────────────────────────────────────────────
 
-def detect_rat(frame, subtractor, cfg, pool_mask=None, pool_bounds=None, frame_idx=0):
+def detect_rat(frame, subtractor, clahe, cfg, pool_mask=None, pool_bounds=None, frame_idx=0):
+    """
+    Detect rat centroid in a single frame.
+
+    Changes vs original:
+    - Accepts a pre-built CLAHE object and applies preprocessing before MOG2.
+    - Candidate scoring: blobs are ranked by area * proximity_bonus so that
+      a large blob far from centre doesn't beat a smaller blob that is closer
+      to the last known position (proximity_bonus is not used here — that
+      logic lives in the gating layer above — but area-only is kept as before
+      since gating handles the jump problem separately).
+    """
     if len(frame.shape) == 3:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    fg_mask = subtractor.apply(frame)
+    # ── Preprocessing ──────────────────────────────────────────────────────
+    enhanced = preprocess_frame(frame, clahe)
+
+    # ── Background subtraction ─────────────────────────────────────────────
+    fg_mask = subtractor.apply(enhanced)
 
     if pool_mask is not None:
         fg_mask = cv2.bitwise_and(fg_mask, fg_mask, mask=pool_mask)
@@ -391,7 +460,8 @@ def detect_rat(frame, subtractor, cfg, pool_mask=None, pool_bounds=None, frame_i
     fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_CLOSE, k_close)
 
     if cfg["debug_frames"] > 0 and frame_idx < cfg["debug_frames"]:
-        cv2.imwrite(f"debug_frame_{frame_idx:03d}.png", fg_mask)
+        cv2.imwrite(f"debug_frame_{frame_idx:03d}_fg.png",       fg_mask)
+        cv2.imwrite(f"debug_frame_{frame_idx:03d}_enhanced.png", enhanced)
 
     contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -491,7 +561,6 @@ def main(video_path: str):
     pool_bounds = (x_min, x_max, y_min, y_max)
     pool_mask   = make_rect_mask((frame_h, frame_w), x_min, x_max, y_min, y_max)
     r_cm        = cfg["pool_radius_cm"]
-    # Use the half-width as the reference "radius" for both axes
     scale_x     = r_cm / rx
     scale_y     = r_cm / ry
 
@@ -499,6 +568,8 @@ def main(video_path: str):
     print(f"Pool rectangle  → centre=({cx},{cy}), half_w={rx}px, half_h={ry}px")
     print(f"Bounds          → x:[{x_min},{x_max}]  y:[{y_min},{y_max}]")
     print(f"Scale factors   → x: {scale_x:.4f} cm/px  |  y: {scale_y:.4f} cm/px")
+    print(f"CLAHE           → clip={cfg['clahe_clip_limit']}  tile={cfg['clahe_tile_size']}x{cfg['clahe_tile_size']}")
+    print(f"Gating          → max_jump={cfg['max_jump_px']}px  warmup={cfg['gate_warmup_frames']} frames")
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     video_out = OUTPUT_DIR / (video_path.stem + "_tracked.mp4")
@@ -511,6 +582,9 @@ def main(video_path: str):
         detectShadows = cfg["mog2_detect_shadow"],
     )
 
+    # ── CLAHE instance (shared across frames) ──
+    clahe = make_clahe(cfg)
+
     # ── Tracking state ──
     records         = []
     trail           = []
@@ -518,6 +592,7 @@ def main(video_path: str):
     running_dist_px = 0.0
     running_dist_cm = 0.0
     prev_pos        = None
+    gated_count     = 0   # how many frames were rejected by gating (for summary)
 
     q_stats = empty_quadrant_stats()
 
@@ -528,7 +603,15 @@ def main(video_path: str):
 
         gray      = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         timestamp = frame_idx / fps
-        pos       = detect_rat(gray, subtractor, cfg, pool_mask, pool_bounds, frame_idx)
+
+        # ── Raw detection ──────────────────────────────────────────────────
+        raw_pos = detect_rat(gray, subtractor, clahe, cfg,
+                             pool_mask, pool_bounds, frame_idx)
+
+        # ── Nearest-neighbour gating ───────────────────────────────────────
+        pos = gate_detection(raw_pos, prev_pos, frame_idx, cfg)
+        if raw_pos is not None and pos is None:
+            gated_count += 1
 
         if pos and prev_pos:
             d_px = euclidean_px(prev_pos, pos)
@@ -556,16 +639,12 @@ def main(video_path: str):
 
         # ── Pool rectangle + quadrant dividers ──
         cv2.rectangle(annotated, (x_min, y_min), (x_max, y_max), (255, 100, 0), 2)
-        # Vertical divider (x = cx)
         cv2.line(annotated, (cx, y_min), (cx, y_max), (255, 100, 0), 1)
-        # Horizontal divider (y = cy)
         cv2.line(annotated, (x_min, cy), (x_max, cy), (255, 100, 0), 1)
-        # Corner + centre markers
         for pt in [cfg["pool_nw"], cfg["pool_ne"], cfg["pool_sw"], cfg["pool_se"], (cx, cy)]:
             cv2.circle(annotated, pt, 5, (255, 100, 0), -1)
             cv2.circle(annotated, pt, 6, (255, 255, 255), 1)
 
-        # Quadrant labels
         q_label_positions = {
             "NE": (cx + rx // 2, cy - ry // 2),
             "NW": (cx - rx // 2, cy - ry // 2),
@@ -586,14 +665,17 @@ def main(video_path: str):
             color = (0, int(255 * alpha), int(100 * (1 - alpha)))
             cv2.line(annotated, trail[i - 1], trail[i], color, 2)
 
-        # Rat dot
+        # Rat dot — green ring if gated (rejected raw pos), normal otherwise
         if pos:
             cv2.circle(annotated, pos, 8,  (0, 0, 255), -1)
             cv2.circle(annotated, pos, 10, (255, 255, 255), 1)
+        if raw_pos and pos is None:
+            # Show where the gated-out candidate was (dim orange)
+            cv2.circle(annotated, raw_pos, 8,  (0, 140, 255), 1)
 
         # ── HUD (top-left) ──
-        status    = "DETECTED" if pos else "MISSING"
-        hud_color = (0, 210, 0) if pos else (0, 0, 210)
+        status    = "DETECTED" if pos else ("GATED" if raw_pos else "MISSING")
+        hud_color = (0, 210, 0) if pos else ((0, 140, 255) if raw_pos else (0, 0, 210))
         pos_str   = f"({pos[0]}, {pos[1]})" if pos else "n/a"
         hud_dist  = f"{running_dist_px:.1f} px  |  {running_dist_cm:.1f} cm"
         cv2.rectangle(annotated, (5, 5), (340, 100), (0, 0, 0), -1)
@@ -618,14 +700,16 @@ def main(video_path: str):
     writer.release()
 
     detected = sum(1 for r in records if r["x"] is not None)
-    print(f"\nProcessed {frame_idx} frames. Detected rat in {detected} frames.")
+    print(f"\nProcessed {frame_idx} frames.")
+    print(f"Detected (post-gate): {detected} frames")
+    print(f"Gated out (jumps):    {gated_count} frames")
     print(f"Annotated video → {video_out}")
 
     # ── Interpolation ──
     records       = interpolate_missing(records)
     missing_after = sum(1 for r in records if r["x"] is None)
     if missing_after:
-        print(f"Warning: {missing_after} frame(s) have no position.")
+        print(f"Warning: {missing_after} frame(s) have no position after interpolation.")
 
     # ── Recalculate final distances + quadrant stats from interpolated records ──
     total_dist_px = 0.0
@@ -674,12 +758,16 @@ def main(video_path: str):
             f"Duration (s)    : {frame_idx / fps:.2f}",
             f"",
             f"Detected frames : {detected}",
+            f"Gated out       : {gated_count}",
             f"Interpolated    : {sum(1 for r in records if r['interpolated'])}",
             f"Missing (no pos): {missing_after}",
             f"",
             f"Pool radius (ref): {cfg['pool_radius_cm']} cm",
             f"Scale X         : {scale_x:.4f} cm/px  (horizontal)",
             f"Scale Y         : {scale_y:.4f} cm/px  (vertical)",
+            f"CLAHE clip      : {cfg['clahe_clip_limit']}",
+            f"CLAHE tile      : {cfg['clahe_tile_size']}x{cfg['clahe_tile_size']}",
+            f"Max jump (gate) : {cfg['max_jump_px']} px",
             f"",
             f"Total distance  : {total_dist_px:.2f} px",
             f"Total distance  : {total_dist_cm:.2f} cm",
@@ -705,7 +793,6 @@ def main(video_path: str):
 
     print(f"Summary saved   → {summary_path}")
 
-    # ── Console output ──
     print(f"\n── Results ───────────────────────────────────────")
     print(f"Total distance  : {total_dist_px:.2f} px")
     print(f"Total distance  : {total_dist_cm:.2f} cm")

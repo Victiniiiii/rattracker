@@ -1,6 +1,10 @@
 ## Features
 
 - Progress bar while working on the video
+- Opencv font is problematic
+- The config confirmation at the start is wrong, and needed for main.py too
+- Make some backgrounds in the opencv UI transparent
+- check if the font is copyrighted
 
 ## Tauri
 

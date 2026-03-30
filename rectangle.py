@@ -4,14 +4,16 @@ import csv
 import math
 import json
 import argparse
+import shutil
 from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont
 
 # ─────────────────────────────────────────────
 # DEFAULT CONFIG
 # ─────────────────────────────────────────────
 DEFAULTS = {
     "mog2_history":       120,
-    "mog2_threshold":     20,        # ↓ was 40 — more sensitive to low-contrast rats
+    "mog2_threshold":     20,        # ↓ was 40 - more sensitive to low-contrast rats
     "mog2_detect_shadow": False,
     "morph_open_k":       3,
     "morph_close_k":      15,
@@ -43,6 +45,37 @@ QUADRANT_COLORS = {
     "SE": (180,   0, 255),
 }
 
+### Font setup
+
+def fix_opencv_qt_fonts():
+    cv2_dir = Path(cv2.__file__).resolve().parent
+    qt_fonts_dir = cv2_dir / "qt" / "fonts"
+
+    qt_fonts_dir.mkdir(parents=True, exist_ok=True)
+
+    bundled_font = Path(__file__).resolve().parent / "assets" / "edosz.ttf"
+
+    if not bundled_font.exists():
+        raise FileNotFoundError(f"Missing font: {bundled_font}")
+
+    target_font = qt_fonts_dir / bundled_font.name
+
+    if not target_font.exists():
+        shutil.copy2(bundled_font, target_font)
+
+def put_ttf_text(img, text, pos, color, size=22):
+    pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(pil_img)
+
+    font_path = Path(__file__).resolve().parent / "assets" / "edosz.ttf"
+    font = ImageFont.truetype(str(font_path), size)
+
+    draw.text(pos, text, font=font, fill=(color[2], color[1], color[0]))
+
+    return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+
+
+fix_opencv_qt_fonts()
 
 # ─────────────────────────────────────────────
 # CONFIG I/O
@@ -80,7 +113,7 @@ def pool_coords_valid(cfg: dict) -> bool:
 
 
 # ─────────────────────────────────────────────
-# POOL CALIBRATION  (rectangle — 4 corners)
+# POOL CALIBRATION  (rectangle - 4 corners)
 # ─────────────────────────────────────────────
 
 CALIB_STEPS = [
@@ -117,22 +150,17 @@ def run_calibration(frame: np.ndarray) -> dict | None:
         if step < len(CALIB_STEPS):
             corner, instruction = CALIB_STEPS[step]
             color = CALIB_COLORS[corner]
-            cv2.putText(img, f"Step {step + 1}/4 — {instruction}",
-                        (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, color, 1)
-            cv2.putText(img, "Press  R  to redo all points   |   ESC to abort",
-                        (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
+            img = put_ttf_text(img, f"Step {step + 1}/4 - {instruction}", (12, 8), color, 20)
+            img = put_ttf_text(img, "Press  R  to redo all points   -   ESC to abort", (12, 44), (180, 180, 180), 15)
         else:
-            cv2.putText(img, "All 4 corners set — press ENTER to confirm or R to redo",
-                        (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (100, 255, 180), 1)
-            cv2.putText(img, "Press  ESC  to abort without saving",
-                        (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
+            img = put_ttf_text(img, "All 4 corners set - press ENTER to confirm or R to redo", (12, 12), (100, 255, 180), 19)
+            img = put_ttf_text(img, "Press  ESC  to abort without saving", (12, 44), (180, 180, 180), 15)
 
         for corner, pt in state["points"].items():
             col = CALIB_COLORS[corner]
             cv2.circle(img, pt, 7, col, -1)
             cv2.circle(img, pt, 9, (255, 255, 255), 1)
-            cv2.putText(img, corner, (pt[0] + 11, pt[1] + 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
+            img = put_ttf_text(img, corner, (pt[0] + 11, pt[1] + 5), col, 15)
 
         if len(state["points"]) == 4:
             p = state["points"]
@@ -162,7 +190,7 @@ def run_calibration(frame: np.ndarray) -> dict | None:
 
     print("\n── Pool Calibration (Rectangle) ──────────────────")
     print("Click the 4 corners of the rectangular pool.")
-    print("Order: NW → NE → SW → SE")
+    print("Order: NW - NE - SW - SE")
     print("R = redo all   |   ENTER = confirm   |   ESC = abort")
     print("──────────────────────────────────────────────────\n")
 
@@ -176,7 +204,7 @@ def run_calibration(frame: np.ndarray) -> dict | None:
             state["step"]   = 0
             state["points"] = {}
             cv2.imshow(window, draw(state["frame"]))
-            print("Points cleared — starting over.")
+            print("Points cleared - starting over.")
         elif key in (13, 10):
             if state["step"] == 4:
                 p = state["points"]
@@ -340,7 +368,7 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm):
 
     cv2.putText(img, "QUADRANT LEADERBOARD",
                 (x0 + pad, y0 + 16),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.44, (200, 200, 200), 1)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.44, (200, 200, 200), 1, cv2.LINE_AA)
 
     for rank, q in enumerate(sorted_q):
         t_s   = stats[q]["time_s"]
@@ -353,13 +381,13 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm):
 
         cv2.putText(img, f"#{rank+1} {q}",
                     (x0 + pad, row_y),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.44, color, 1)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.44, color, 1, cv2.LINE_AA)
         cv2.putText(img, f"T:{t_s:5.1f}s {t_pct:4.1f}%",
                     (x0 + pad + 52, row_y),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.40, (220, 220, 220), 1)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.40, (220, 220, 220), 1, cv2.LINE_AA)
         cv2.putText(img, f"D:{d_cm:6.1f}cm {d_pct:4.1f}%",
                     (x0 + pad + 166, row_y),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 200, 50), 1)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 200, 50), 1, cv2.LINE_AA)
 
 
 # ─────────────────────────────────────────────
@@ -380,8 +408,8 @@ def preprocess_frame(gray: np.ndarray, clahe: cv2.CLAHE) -> np.ndarray:
     Apply preprocessing to a grayscale frame before feeding MOG2.
 
     Pipeline:
-      1. Gaussian blur  — suppresses compression noise / sensor grain
-      2. CLAHE          — locally boosts contrast so rat stands out from water
+      1. Gaussian blur  - suppresses compression noise / sensor grain
+      2. CLAHE          - locally boosts contrast so rat stands out from water
     """
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     enhanced = clahe.apply(blurred)
@@ -400,7 +428,7 @@ def gate_detection(candidate, prev_pos, frame_idx: int, cfg: dict):
     Rules:
     - During warmup (frame_idx < gate_warmup_frames): always accept.
       MOG2 hasn't built a stable background model yet so candidates
-      are unreliable — gating them would discard real first detections.
+      are unreliable - gating them would discard real first detections.
     - If no previous position exists: accept (establishes first lock).
     - If distance from prev_pos > max_jump_px: reject (return None).
       A rat can only move so far between frames; big jumps are noise.
@@ -436,8 +464,8 @@ def detect_rat(frame, subtractor, clahe, cfg, pool_mask=None, pool_bounds=None, 
     - Accepts a pre-built CLAHE object and applies preprocessing before MOG2.
     - Candidate scoring: blobs are ranked by area * proximity_bonus so that
       a large blob far from centre doesn't beat a smaller blob that is closer
-      to the last known position (proximity_bonus is not used here — that
-      logic lives in the gating layer above — but area-only is kept as before
+      to the last known position (proximity_bonus is not used here - that
+      logic lives in the gating layer above - but area-only is kept as before
       since gating handles the jump problem separately).
     """
     if len(frame.shape) == 3:
@@ -543,14 +571,14 @@ def main(video_path: str):
         raise RuntimeError("Could not read first frame from video.")
 
     if not pool_coords_valid(cfg):
-        print("\nNo pool coordinates found — opening calibration window...")
+        print("\nNo pool coordinates found - opening calibration window...")
         result = run_calibration(first_frame)
         if result is None:
             raise RuntimeError("Pool calibration is required. Please re-run and complete calibration.")
         cfg.update(result)
         save_config(cfg)
     else:
-        print("Pool coordinates loaded from config — skipping calibration.")
+        print("Pool coordinates loaded from config - skipping calibration.")
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
@@ -565,11 +593,11 @@ def main(video_path: str):
     scale_y     = r_cm / ry
 
     print(f"Pool radius (ref): {r_cm} cm")
-    print(f"Pool rectangle  → centre=({cx},{cy}), half_w={rx}px, half_h={ry}px")
-    print(f"Bounds          → x:[{x_min},{x_max}]  y:[{y_min},{y_max}]")
-    print(f"Scale factors   → x: {scale_x:.4f} cm/px  |  y: {scale_y:.4f} cm/px")
-    print(f"CLAHE           → clip={cfg['clahe_clip_limit']}  tile={cfg['clahe_tile_size']}x{cfg['clahe_tile_size']}")
-    print(f"Gating          → max_jump={cfg['max_jump_px']}px  warmup={cfg['gate_warmup_frames']} frames")
+    print(f"Pool rectangle  - centre=({cx},{cy}), half_w={rx}px, half_h={ry}px")
+    print(f"Bounds          - x:[{x_min},{x_max}]  y:[{y_min},{y_max}]")
+    print(f"Scale factors   - x: {scale_x:.4f} cm/px  |  y: {scale_y:.4f} cm/px")
+    print(f"CLAHE           - clip={cfg['clahe_clip_limit']}  tile={cfg['clahe_tile_size']}x{cfg['clahe_tile_size']}")
+    print(f"Gating          - max_jump={cfg['max_jump_px']}px  warmup={cfg['gate_warmup_frames']} frames")
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     video_out = OUTPUT_DIR / (video_path.stem + "_tracked.mp4")
@@ -653,7 +681,7 @@ def main(video_path: str):
         }
         for q, lp in q_label_positions.items():
             cv2.putText(annotated, q, lp,
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, QUADRANT_COLORS[q], 1)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, QUADRANT_COLORS[q], 1, cv2.LINE_AA)
 
         # Trail
         if pos:
@@ -665,7 +693,7 @@ def main(video_path: str):
             color = (0, int(255 * alpha), int(100 * (1 - alpha)))
             cv2.line(annotated, trail[i - 1], trail[i], color, 2)
 
-        # Rat dot — green ring if gated (rejected raw pos), normal otherwise
+        # Rat dot - green ring if gated (rejected raw pos), normal otherwise
         if pos:
             cv2.circle(annotated, pos, 8,  (0, 0, 255), -1)
             cv2.circle(annotated, pos, 10, (255, 255, 255), 1)
@@ -680,13 +708,13 @@ def main(video_path: str):
         hud_dist  = f"{running_dist_px:.1f} px  |  {running_dist_cm:.1f} cm"
         cv2.rectangle(annotated, (5, 5), (340, 100), (0, 0, 0), -1)
         cv2.putText(annotated, f"Frame: {frame_idx:>4}   t = {timestamp:.2f}s",
-                    (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1)
+                    (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1, cv2.LINE_AA)
         cv2.putText(annotated, f"Position: {pos_str}",
-                    (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1)
+                    (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1, cv2.LINE_AA)
         cv2.putText(annotated, status,
-                    (10, 72), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hud_color, 1)
+                    (10, 72), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hud_color, 1, cv2.LINE_AA)
         cv2.putText(annotated, f"Dist: {hud_dist}",
-                    (10, 95), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 200, 50), 1)
+                    (10, 95), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 200, 50), 1, cv2.LINE_AA)
 
         # ── Leaderboard (top-right) ──
         total_q_time = sum(v["time_s"]  for v in q_stats.values())
@@ -703,7 +731,7 @@ def main(video_path: str):
     print(f"\nProcessed {frame_idx} frames.")
     print(f"Detected (post-gate): {detected} frames")
     print(f"Gated out (jumps):    {gated_count} frames")
-    print(f"Annotated video → {video_out}")
+    print(f"Annotated video - {video_out}")
 
     # ── Interpolation ──
     records       = interpolate_missing(records)
@@ -742,7 +770,7 @@ def main(video_path: str):
             f, fieldnames=["frame", "timestamp_s", "x", "y", "interpolated"])
         writer_csv.writeheader()
         writer_csv.writerows(records)
-    print(f"Coordinates saved → {csv_path}")
+    print(f"Coordinates saved - {csv_path}")
 
     # ── Summary ──
     sorted_q = sorted(QUADRANT_NAMES,
@@ -791,7 +819,7 @@ def main(video_path: str):
         ]
         f.write("\n".join(lines))
 
-    print(f"Summary saved   → {summary_path}")
+    print(f"Summary saved   - {summary_path}")
 
     print(f"\n── Results ───────────────────────────────────────")
     print(f"Total distance  : {total_dist_px:.2f} px")

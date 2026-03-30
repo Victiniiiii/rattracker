@@ -1,8 +1,10 @@
 ## Features
 
+- rectangle needs to check for the center (or we can decide on that)
+- "GATED"
 - Progress bar while working on the video
-- Opencv font is problematic
 - The config confirmation at the start is wrong, and needed for main.py too
+- replace all fonts
 - Make some backgrounds in the opencv UI transparent
 - check if the font is copyrighted
 

@@ -8,33 +8,8 @@ import shutil
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
-# ─────────────────────────────────────────────
-# DEFAULT CONFIG
-# ─────────────────────────────────────────────
-DEFAULTS = {
-    "mog2_history":       120,
-    "mog2_threshold":     20,        # ↓ was 40 - more sensitive to low-contrast rats
-    "mog2_detect_shadow": False,
-    "morph_open_k":       3,
-    "morph_close_k":      15,
-    "min_contour_area":   300,
-    "max_contour_area":   12000,
-    "trail_len":          40,
-    "debug_frames":       0,
-    "pool_radius_cm":     60,
-    "pool_nw":            None,
-    "pool_ne":            None,
-    "pool_sw":            None,
-    "pool_se":            None,
-    # ── CLAHE ──────────────────────────────────
-    "clahe_clip_limit":   2.0,       # contrast amplification ceiling per tile
-    "clahe_tile_size":    8,         # grid tile size (NxN); smaller = more local
-    # ── Nearest-neighbour gating ───────────────
-    "max_jump_px":        80,        # reject detections farther than this from last pos
-    "gate_warmup_frames": 10,        # frames before gating activates (lets MOG2 settle)
-}
+from config import load_config, save_config, pool_coords_valid
 
-CONFIG_FILE = Path(__file__).parent / "config.json"
 OUTPUT_DIR  = Path(__file__).parent / "output"
 
 QUADRANT_NAMES  = ["NE", "NW", "SW", "SE"]
@@ -78,41 +53,6 @@ def put_ttf_text(img, text, pos, color, size=22):
 fix_opencv_qt_fonts()
 
 # ─────────────────────────────────────────────
-# CONFIG I/O
-# ─────────────────────────────────────────────
-
-def load_config() -> dict:
-    if CONFIG_FILE.exists():
-        try:
-            with open(CONFIG_FILE, "r") as f:
-                saved = json.load(f)
-            # Merge with DEFAULTS so new keys always have a value
-            cfg = {**DEFAULTS, **saved}
-            for key in ("pool_nw", "pool_ne", "pool_sw", "pool_se"):
-                if cfg[key] is not None:
-                    cfg[key] = tuple(cfg[key])
-            print(f"Config loaded from {CONFIG_FILE}")
-            return cfg
-        except Exception as e:
-            print(f"Warning: could not read config.json ({e}). Using defaults.")
-    return dict(DEFAULTS)
-
-
-def save_config(cfg: dict):
-    serialisable = {}
-    for k, v in cfg.items():
-        serialisable[k] = list(v) if isinstance(v, tuple) else v
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(serialisable, f, indent=2)
-    print(f"Config saved to {CONFIG_FILE}")
-
-
-def pool_coords_valid(cfg: dict) -> bool:
-    return all(cfg.get(k) is not None
-               for k in ("pool_nw", "pool_ne", "pool_sw", "pool_se"))
-
-
-# ─────────────────────────────────────────────
 # POOL CALIBRATION  (rectangle - 4 corners)
 # ─────────────────────────────────────────────
 
@@ -144,7 +84,11 @@ def run_calibration(frame: np.ndarray) -> dict | None:
 
     def draw(base):
         img = base.copy()
-        cv2.rectangle(img, (0, 0), (frame.shape[1], 70), (0, 0, 0), -1)
+        
+        overlay = img.copy()
+        cv2.rectangle(overlay, (0, 0), (frame.shape[1], 70), (0, 0, 0), -1)
+        alpha = 0.5
+        img = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
 
         step = state["step"]
         if step < len(CALIB_STEPS):
@@ -706,7 +650,10 @@ def main(video_path: str):
         hud_color = (0, 210, 0) if pos else ((0, 140, 255) if raw_pos else (0, 0, 210))
         pos_str   = f"({pos[0]}, {pos[1]})" if pos else "n/a"
         hud_dist  = f"{running_dist_px:.1f} px  |  {running_dist_cm:.1f} cm"
-        cv2.rectangle(annotated, (5, 5), (340, 100), (0, 0, 0), -1)
+        overlay = annotated.copy()
+        cv2.rectangle(overlay, (5, 5), (290, 100), (0, 0, 0), -1)
+        alpha = 0.5
+        cv2.addWeighted(overlay, alpha, annotated, 1 - alpha, 0, annotated)
         cv2.putText(annotated, f"Frame: {frame_idx:>4}   t = {timestamp:.2f}s",
                     (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1, cv2.LINE_AA)
         cv2.putText(annotated, f"Position: {pos_str}",

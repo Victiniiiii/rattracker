@@ -1,18 +1,20 @@
+# Setup
+
 # Create a virtual environment called "venv"
 python3 -m venv venv
 
-# Activate it (Linux/macOS)
+# Activate it 
+## Windows
+.\venv\Scripts\Activate.ps1  
+
+## Linux/macOS
 source venv/bin/activate
 
-# Activate it (Windows PowerShell)
-.\venv\Scripts\Activate.ps1
-
-# Now your shell should show (venv) at the start
+## Install required packages
 pip install -r requirements.txt
-python main.py
 
-# Optional: Deactivate the virtual environment
-deactivate
+# Usage
 
-# Goal:
-12266 pixels
+python main.py --video input/video1.mp4  
+
+python rectangle.py --video input/video3.mp4  

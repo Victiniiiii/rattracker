@@ -4,6 +4,7 @@ import csv
 import math
 import json
 import argparse
+import time
 from pathlib import Path
 
 # ─────────────────────────────────────────────
@@ -323,11 +324,10 @@ def accumulate_static(stats, pos, cx, cy, frame_dt):
 def draw_leaderboard(img, stats, total_time_s, total_dist_cm):
     """
     Draws a quadrant leaderboard at the top-right of the frame.
-    Sorted by time spent, descending.
+    Fixed order: NE → SE → SW → NW (clockwise from North).
     Shows: rank, quadrant name, time (s + %), distance (cm + %).
     """
-    sorted_q = sorted(QUADRANT_NAMES,
-                      key=lambda q: stats[q]["time_s"], reverse=True)
+    sorted_q = ["NE", "SE", "SW", "NW"]
 
     panel_w  = 310
     row_h    = 22
@@ -453,6 +453,74 @@ def interpolate_missing(records: list) -> list:
 
 
 # ─────────────────────────────────────────────
+# CONFIG CONFIRMATION
+# ─────────────────────────────────────────────
+
+def confirm_pool_from_config(frame, cfg):
+    """
+    Shows the first frame with the saved pool coordinates drawn on it.
+    Returns True if the user confirms (ENTER), False if they want to repick (ESC).
+    """
+    p = {
+        "WEST":  cfg["pool_west"],
+        "NORTH": cfg["pool_north"],
+        "EAST":  cfg["pool_east"],
+        "SOUTH": cfg["pool_south"],
+    }
+    cx = (p["WEST"][0]  + p["EAST"][0])  // 2
+    cy = (p["NORTH"][1] + p["SOUTH"][1]) // 2
+    rx = (p["EAST"][0]  - p["WEST"][0])  // 2
+    ry = (p["SOUTH"][1] - p["NORTH"][1]) // 2
+
+    img = frame.copy()
+
+    # Draw pool ellipse and center
+    cv2.ellipse(img, (cx, cy), (rx, ry), 0, 0, 360, (100, 255, 180), 2)
+    cv2.circle(img, (cx, cy), 5, (100, 255, 180), -1)
+    cv2.circle(img, (cx, cy), 7, (255, 255, 255), 1)
+
+    # Draw cardinal points
+    for cardinal, pt in p.items():
+        col = CALIB_COLORS[cardinal]
+        cv2.circle(img, pt, 7, col, -1)
+        cv2.circle(img, pt, 9, (255, 255, 255), 1)
+        cv2.putText(img, cardinal, (pt[0] + 11, pt[1] + 5),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
+
+    # Instruction banner
+    cv2.rectangle(img, (0, 0), (frame.shape[1], 70), (0, 0, 0), -1)
+    cv2.putText(img, "Saved pool coordinates found — confirm or repick?",
+                (12, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (100, 255, 180), 1)
+    cv2.putText(img, "ENTER  -->  Continue with these coordinates     ESC  -->  Repick",
+                (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (180, 180, 180), 1)
+
+    window = "Pool Confirmation"
+    cv2.namedWindow(window, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(window, min(frame.shape[1], 1280), min(frame.shape[0], 720))
+    cv2.imshow(window, img)
+
+    print("\n── Saved Pool Coordinates ────────────────────────")
+    for cardinal, pt in p.items():
+        print(f"  {cardinal}: {pt}")
+    print(f"  Centre: ({cx}, {cy})  rx={rx}px  ry={ry}px")
+    print("ENTER = use these   |   ESC = repick")
+    print("──────────────────────────────────────────────────\n")
+
+    result = False
+    while True:
+        key = cv2.waitKey(20) & 0xFF
+        if key in (13, 10):   # ENTER
+            result = True
+            break
+        elif key == 27:       # ESC
+            result = False
+            break
+
+    cv2.destroyWindow(window)
+    return result
+
+
+# ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
 
@@ -485,7 +553,17 @@ def main(video_path: str):
         cfg.update(result)
         save_config(cfg)
     else:
-        print("Pool coordinates loaded from config — skipping calibration.")
+        # Config exists with valid coordinates — show preview and ask user to confirm
+        use_saved = confirm_pool_from_config(first_frame, cfg)
+        if not use_saved:
+            print("\nRepicking pool coordinates...")
+            result = run_calibration(first_frame)
+            if result is None:
+                raise RuntimeError("Pool calibration is required. Please re-run and complete calibration.")
+            cfg.update(result)
+            save_config(cfg)
+        else:
+            print("Using saved pool coordinates.")
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
@@ -525,6 +603,8 @@ def main(video_path: str):
 
     # Quadrant stats accumulated live (for leaderboard overlay)
     q_stats = empty_quadrant_stats()
+
+    loop_start = time.time()
 
     while True:
         ret, frame = cap.read()
@@ -620,8 +700,25 @@ def main(video_path: str):
         writer.write(annotated)
         frame_idx += 1
 
+        # ── Console progress bar ──
+        if total_frames > 0:
+            pct      = frame_idx / total_frames
+            elapsed  = time.time() - loop_start
+            eta      = (elapsed / pct - elapsed) if pct > 0 else 0
+            bar_w    = 30
+            filled   = int(bar_w * pct)
+            bar      = "█" * filled + "░" * (bar_w - filled)
+            eta_str  = f"{int(eta // 60):02d}:{int(eta % 60):02d}"
+            print(f"\r  [{bar}] {pct*100:5.1f}%  |  frame {frame_idx}/{total_frames}"
+                  f"  |  ETA {eta_str}  ", end="", flush=True)
+
     cap.release()
     writer.release()
+
+    total_elapsed = time.time() - loop_start
+    print(f"\r  Processing complete — {frame_idx} frames in "
+          f"{int(total_elapsed // 60):02d}:{int(total_elapsed % 60):02d}  "
+          + " " * 20)  # overwrite any leftover ETA text
 
     detected = sum(1 for r in records if r["x"] is not None)
     print(f"\nProcessed {frame_idx} frames. Detected rat in {detected} frames.")

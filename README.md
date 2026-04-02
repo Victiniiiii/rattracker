@@ -1,13 +1,13 @@
 # Setup
 
-# Create a virtual environment called "venv"
+## Create a virtual environment called "venv"
 python3 -m venv venv
 
-# Activate it 
-## Windows
+## Activate it 
+### Windows
 .\venv\Scripts\Activate.ps1  
 
-## Linux/macOS
+### Linux/macOS
 source venv/bin/activate
 
 ## Install required packages

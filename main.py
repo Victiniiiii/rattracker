@@ -125,16 +125,21 @@ def run_calibration(frame: np.ndarray, pool_radius_cm=None) -> dict | None:
 
         if len(state["points"]) == 4:
             p = state["points"]
-            cx, cy = (p["WEST"][0] + p["EAST"][0] + p["NORTH"][0] + p["SOUTH"][0]) // 4, \
-                     (p["WEST"][1] + p["EAST"][1] + p["NORTH"][1] + p["SOUTH"][1]) // 4
-            rx = int(euclidean_px(p["WEST"], p["EAST"]) / 2)
-            ry = int(euclidean_px(p["NORTH"], p["SOUTH"]) / 2)
 
-            angle = 0
-            if pool_radius_cm is not None:
-                scale_x = pool_radius_cm / rx
-                scale_y = pool_radius_cm / ry
-                cx, cy, rx, ry, angle = perfect_circle_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"], pool_radius_cm, scale_x, scale_y)
+            raw_rx = euclidean_px(p["WEST"], p["EAST"]) / 2
+            raw_ry = euclidean_px(p["NORTH"], p["SOUTH"]) / 2
+
+            if pool_radius_cm is not None and raw_rx > 0 and raw_ry > 0:
+                scale_x = pool_radius_cm / raw_rx
+                scale_y = pool_radius_cm / raw_ry
+                cx, cy, rx, ry, angle = perfect_circle_from_nsew(
+                    p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"],
+                    pool_radius_cm, scale_x, scale_y
+                )
+            else:
+                cx = int((p["WEST"][0] + p["EAST"][0] + p["NORTH"][0] + p["SOUTH"][0]) / 4)
+                cy = int((p["WEST"][1] + p["EAST"][1] + p["NORTH"][1] + p["SOUTH"][1]) / 4)
+                rx, ry, angle = int(raw_rx), int(raw_ry), 0
 
             cv2.ellipse(img, (cx, cy), (rx, ry), angle, 0, 360, (100, 255, 180), 2)
             cv2.circle(img, (cx, cy), 5, (100, 255, 180), -1)
@@ -235,6 +240,7 @@ def get_video_params(default_radius=60):
     print(f"Using parameters -> Start: {start_sec or 'default'} s, End: {end_sec or 'default'} s, Pool radius: {pool_radius_cm} cm\n")
     return start_sec, end_sec, pool_radius_cm
 
+
 def perfect_circle_from_nsew(west, north, east, south, pool_radius_cm, scale_x, scale_y):
     cx = (west[0] + east[0] + north[0] + south[0]) / 4
     cy = (west[1] + east[1] + north[1] + south[1]) / 4
@@ -242,10 +248,8 @@ def perfect_circle_from_nsew(west, north, east, south, pool_radius_cm, scale_x, 
     rx_px = int(round(pool_radius_cm / scale_x))
     ry_px = int(round(pool_radius_cm / scale_y))
 
-    avg_px = int(round((rx_px + ry_px) / 2))
-    rx_px = ry_px = avg_px
-
     return int(round(cx)), int(round(cy)), rx_px, ry_px, 0
+
 
 def make_ellipse_mask(shape, cx, cy, rx, ry, angle):
     mask = np.zeros(shape[:2], dtype=np.uint8)
@@ -365,7 +369,7 @@ def empty_quadrant_stats():
     return {q: {"time_s": 0.0, "dist_cm": 0.0} for q in QUADRANT_NAMES}
 
 
-def accumulate_segment(stats, p1, p2, west, north, east, south,frame_dt, scale_x, scale_y):
+def accumulate_segment(stats, p1, p2, west, north, east, south, frame_dt, scale_x, scale_y):
     total_dist_px = euclidean_px(p1, p2)
     splits = segment_quadrant_splits(p1, p2, west, north, east, south)
 
@@ -554,7 +558,7 @@ def main(video_path: str):
     start_sec, end_sec, pool_radius_cm = get_video_params()
     DEFAULTS["pool_radius_cm"] = pool_radius_cm
 
-    cfg = load_config()    
+    cfg = load_config()
 
     cap          = cv2.VideoCapture(str(video_path))
     fps          = cap.get(cv2.CAP_PROP_FPS) or 4.0
@@ -563,7 +567,8 @@ def main(video_path: str):
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     frame_dt     = 1.0 / fps
 
-    print(f"Video : {video_path.name} | {frame_w}x{frame_h} | " f"FPS: {fps:.2f} | Frames: {total_frames}")
+    print(f"Video : {video_path.name} | {frame_w}x{frame_h} | "
+          f"FPS: {fps:.2f} | Frames: {total_frames}")
 
     ret, first_frame = cap.read()
     if not ret:
@@ -571,7 +576,7 @@ def main(video_path: str):
 
     if not pool_coords_valid(cfg):
         print("\nNo pool coordinates found -- opening calibration window...")
-        result = run_calibration(first_frame)
+        result = run_calibration(first_frame, pool_radius_cm)
         if result is None:
             raise RuntimeError("Pool calibration is required. Please re-run and complete calibration.")
         cfg.update(result)
@@ -580,7 +585,7 @@ def main(video_path: str):
         use_saved = confirm_pool_from_config(first_frame, cfg)
         if not use_saved:
             print("\nRepicking pool coordinates...")
-            result = run_calibration(first_frame)
+            result = run_calibration(first_frame, pool_radius_cm)
             if result is None:
                 raise RuntimeError("Pool calibration is required. Please re-run and complete calibration.")
             cfg.update(result)
@@ -596,17 +601,22 @@ def main(video_path: str):
     south = cfg["pool_south"]
 
     r_cm = cfg["pool_radius_cm"]
+
+    raw_rx_px = euclidean_px(west, east) / 2
+    raw_ry_px = euclidean_px(north, south) / 2
+
+    scale_x = r_cm / raw_rx_px
+    scale_y = r_cm / raw_ry_px
+
     cx, cy, rx, ry, angle = perfect_circle_from_nsew(
         west, north, east, south,
         pool_radius_cm=r_cm,
-        scale_x=r_cm / int(euclidean_px(west, east)/2),
-        scale_y=r_cm / int(euclidean_px(north, south)/2)
+        scale_x=scale_x,
+        scale_y=scale_y,
     )
 
     pool = (cx, cy, rx, ry, angle)
     pool_mask = make_ellipse_mask((frame_h, frame_w), *pool)
-    scale_x = r_cm / rx
-    scale_y = r_cm / ry
 
     print(f"Pool radius: {r_cm} cm")
     print(f"Pool ellipse -> centre=({cx},{cy}), rx={rx}px, ry={ry}px")

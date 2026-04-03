@@ -2,11 +2,9 @@
 
 - rectangle needs to check for the center (or we can decide on that)
 - "GATED"
-- Progress bar while working on the video
-- The config confirmation at the start is wrong, and needed for main.py too
 - replace all fonts
-- Make some backgrounds in the opencv UI transparent
-- check if the font is copyrighted
+- check if the font is copyrighted or just use a different one or just use the regular and fix 720p
+- Separate config.json for different scripts?
 
 ## Tauri
 
@@ -17,3 +15,5 @@
 ## Final
 
 soundforge ??
+
+konsolda yes yes yes (Başlangıç, bitiş, radius)

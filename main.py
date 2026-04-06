@@ -95,10 +95,6 @@ def draw_transparent_banner(img, x0, y0, x1, y1, alpha=0.72):
 
 
 def run_calibration(frame: np.ndarray, pool_radius_cm=None) -> dict | None:
-    """
-    Opens calibration window to pick NSEW points and calculates scale factors.
-    Returns dict with pool points.
-    """
     state = {"step": 0, "points": {}, "frame": frame.copy()}
     window = "Pool Calibration"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
@@ -125,26 +121,13 @@ def run_calibration(frame: np.ndarray, pool_radius_cm=None) -> dict | None:
 
         if len(state["points"]) == 4:
             p = state["points"]
-
-            raw_rx = euclidean_px(p["WEST"], p["EAST"]) / 2
-            raw_ry = euclidean_px(p["NORTH"], p["SOUTH"]) / 2
-
-            if pool_radius_cm is not None and raw_rx > 0 and raw_ry > 0:
-                scale_x = pool_radius_cm / raw_rx
-                scale_y = pool_radius_cm / raw_ry
-                cx, cy, rx, ry, angle = perfect_circle_from_nsew(
-                    p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"],
-                    pool_radius_cm, scale_x, scale_y
-                )
-            else:
-                cx = int((p["WEST"][0] + p["EAST"][0] + p["NORTH"][0] + p["SOUTH"][0]) / 4)
-                cy = int((p["WEST"][1] + p["EAST"][1] + p["NORTH"][1] + p["SOUTH"][1]) / 4)
-                rx, ry, angle = int(raw_rx), int(raw_ry), 0
-
-            cv2.ellipse(img, (cx, cy), (rx, ry), angle, 0, 360, (100, 255, 180), 2)
-            cv2.circle(img, (cx, cy), 5, (100, 255, 180), -1)
-            cv2.line(img, p["NORTH"], p["SOUTH"], (100, 255, 180), 1)
-            cv2.line(img, p["WEST"],  p["EAST"],  (100, 255, 180), 1)
+            result = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
+            if result is not None:
+                cx, cy, rx, ry, angle = result
+                cv2.ellipse(img, (cx, cy), (rx, ry), angle, 0, 360, (100, 255, 180), 2)
+                cv2.circle(img, (cx, cy), 5, (100, 255, 180), -1)
+                cv2.line(img, p["NORTH"], p["SOUTH"], (100, 255, 180), 1)
+                cv2.line(img, p["WEST"],  p["EAST"],  (100, 255, 180), 1)
 
         return img
 
@@ -202,53 +185,22 @@ def pool_ellipse_from_nsew(west, north, east, south):
     cx = (west[0] + east[0] + north[0] + south[0]) / 4
     cy = (west[1] + east[1] + north[1] + south[1]) / 4
 
-    we_dx = east[0] - west[0]
-    we_dy = east[1] - west[1]
+    r1x = east[0] - cx
+    r1y = east[1] - cy
+    r2x = north[0] - cx
+    r2y = north[1] - cy
 
-    ns_dx = south[0] - north[0]
-    ns_dy = south[1] - north[1]
+    M = np.array([
+        [r1x*r1x + r2x*r2x, r1x*r1y + r2x*r2y],
+        [r1x*r1y + r2x*r2y, r1y*r1y + r2y*r2y],
+    ], dtype=np.float64)
 
-    rx = math.sqrt(we_dx**2 + we_dy**2) / 2
-    ry = math.sqrt(ns_dx**2 + ns_dy**2) / 2
+    eigenvalues, eigenvectors = np.linalg.eigh(M)
+    rx = int(round(math.sqrt(eigenvalues[1])))
+    ry = int(round(math.sqrt(eigenvalues[0])))
+    angle = math.degrees(math.atan2(eigenvectors[1, 1], eigenvectors[0, 1]))
 
-    angle = math.degrees(math.atan2(we_dy, we_dx))
-
-    return int(round(cx)), int(round(cy)), int(round(rx)), int(round(ry)), angle
-
-def parse_time_input(inp: str) -> float:
-    # Convert user input to seconds. Accepts mm:ss or ss.
-    inp = inp.strip()
-    if not inp:
-        return None
-    if ':' in inp:
-        parts = inp.split(':')
-        if len(parts) == 2:
-            minutes, seconds = parts
-            return int(minutes) * 60 + int(seconds)
-    return float(inp)
-
-def get_video_params(default_radius=60):
-    """Prompt user for start/end times and pool radius."""
-    start_inp = input("Video start time (Press Enter for regular start, or type 00:05 / 5): ")
-    end_inp   = input("Video ending time (Press Enter for regular end, or type 01:02 / 62): ")
-    radius_inp = input(f"Pool radius in cm (Press Enter for {default_radius}): ")
-
-    start_sec = parse_time_input(start_inp)
-    end_sec   = parse_time_input(end_inp)
-    pool_radius_cm = float(radius_inp) if radius_inp.strip() else default_radius
-
-    print(f"Using parameters -> Start: {start_sec or 'default'} s, End: {end_sec or 'default'} s, Pool radius: {pool_radius_cm} cm\n")
-    return start_sec, end_sec, pool_radius_cm
-
-
-def perfect_circle_from_nsew(west, north, east, south, pool_radius_cm, scale_x, scale_y):
-    cx = (west[0] + east[0] + north[0] + south[0]) / 4
-    cy = (west[1] + east[1] + north[1] + south[1]) / 4
-
-    rx_px = int(round(pool_radius_cm / scale_x))
-    ry_px = int(round(pool_radius_cm / scale_y))
-
-    return int(round(cx)), int(round(cy)), rx_px, ry_px, 0
+    return int(round(cx)), int(round(cy)), rx, ry, angle
 
 
 def make_ellipse_mask(shape, cx, cy, rx, ry, angle):
@@ -275,10 +227,10 @@ def euclidean_px(p1, p2) -> float:
     return math.sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2)
 
 
-def euclidean_cm(p1, p2, scale_x: float, scale_y: float) -> float:
-    dx = (p2[0] - p1[0]) * scale_x
-    dy = (p2[1] - p1[1]) * scale_y
-    return math.sqrt(dx ** 2 + dy ** 2)
+def euclidean_cm(p1, p2, scale_x, scale_y) -> float:
+    dx_real = (p2[0] - p1[0]) * scale_x
+    dy_real = (p2[1] - p1[1]) * scale_y
+    return math.sqrt(dx_real**2 + dy_real**2)
 
 
 def cross2d(ax, ay, bx, by) -> float:
@@ -286,8 +238,11 @@ def cross2d(ax, ay, bx, by) -> float:
 
 
 def get_quadrant(x, y, west, north, east, south) -> str:
-    cx = (west[0] + east[0] + north[0] + south[0]) / 4
-    cy = (west[1] + east[1] + north[1] + south[1]) / 4
+    center = line_intersection(west, east, north, south)
+    if center is None:
+        return "UNKNOWN"
+
+    cx, cy = center
 
     we_dx = east[0] - west[0]
     we_dy = east[1] - west[1]
@@ -313,21 +268,37 @@ def get_quadrant(x, y, west, north, east, south) -> str:
     else:
         return "SE"
 
+def line_intersection(p1, p2, p3, p4):
+    x1, y1 = p1
+    x2, y2 = p2
+    x3, y3 = p3
+    x4, y4 = p4
+
+    denom = (x1 - x2)*(y3 - y4) - (y1 - y2)*(x3 - x4)
+    if abs(denom) < 1e-9:
+        return None
+
+    px = ((x1*y2 - y1*x2)*(x3 - x4) - (x1 - x2)*(x3*y4 - y3*x4)) / denom
+    py = ((x1*y2 - y1*x2)*(y3 - y4) - (y1 - y2)*(x3*y4 - y3*x4)) / denom
+
+    return px, py
+
 def line_segment_intersection_t(p1, p2, q1, q2):
-    dx  = p2[0] - p1[0]
-    dy  = p2[1] - p1[1]
-    qx  = q2[0] - q1[0]
-    qy  = q2[1] - q1[1]
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    qx = q2[0] - q1[0]
+    qy = q2[1] - q1[1]
 
     denom = cross2d(dx, dy, qx, qy)
-    if abs(denom) < 1e-9:
-        return None  # Parallel
 
+    if abs(denom) < 1e-9:
+        return None
+    
     wx = q1[0] - p1[0]
     wy = q1[1] - p1[1]
-    t  = cross2d(wx, wy, qx, qy) / denom
-    return t
 
+    t = cross2d(wx, wy, qx, qy) / denom    
+    return t
 
 def segment_quadrant_splits(p1, p2, west, north, east, south):
     x1, y1 = p1[0], p1[1]
@@ -362,6 +333,28 @@ def segment_quadrant_splits(p1, p2, west, north, east, south):
 
     return splits
 
+def parse_time_input(inp: str) -> float:
+    inp = inp.strip()
+    if not inp:
+        return None
+    if ':' in inp:
+        parts = inp.split(':')
+        if len(parts) == 2:
+            minutes, seconds = parts
+            return int(minutes) * 60 + int(seconds)
+    return float(inp)
+
+def get_video_params(default_radius=60):
+    start_inp = input("Video start time (Press Enter for regular start, or type 00:05 / 5): ")
+    end_inp   = input("Video ending time (Press Enter for regular end, or type 01:02 / 62): ")
+    radius_inp = input(f"Pool radius in cm (Press Enter for {default_radius}): ")
+
+    start_sec = parse_time_input(start_inp)
+    end_sec   = parse_time_input(end_inp)
+    pool_radius_cm = float(radius_inp) if radius_inp.strip() else default_radius
+
+    print(f"Using parameters -> Start: {start_sec or 'default'} s, End: {end_sec or 'default'} s, Pool radius: {pool_radius_cm} cm\n")
+    return start_sec, end_sec, pool_radius_cm
 
 # QUADRANT STATS ACCUMULATOR
 
@@ -428,7 +421,7 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm):
 
 # RAT DETECTION
 
-def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0):
+def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, prev_pos=None):
     if len(frame.shape) == 3:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
@@ -447,7 +440,7 @@ def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0):
 
     contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    best, best_area = None, 0
+    candidates = []
     for cnt in contours:
         area = cv2.contourArea(cnt)
         if area < cfg["min_contour_area"] or area > cfg["max_contour_area"]:
@@ -459,11 +452,18 @@ def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0):
         by = int(M["m01"] / M["m00"])
         if pool is not None and not point_in_ellipse(bx, by, *pool):
             continue
-        if area > best_area:
-            best_area = area
-            best = (bx, by)
+        candidates.append((bx, by, area))
 
-    return best
+    if not candidates:
+        return None
+
+    if prev_pos is not None:
+        candidates.sort(key=lambda c: euclidean_px(prev_pos, (c[0], c[1])))
+    else:
+        candidates.sort(key=lambda c: c[2], reverse=True)
+
+    bx, by, _ = candidates[0]
+    return (bx, by)
 
 
 # INTERPOLATION
@@ -505,7 +505,11 @@ def confirm_pool_from_config(frame, cfg):
         "SOUTH": cfg["pool_south"],
     }
 
-    cx, cy, rx, ry, angle = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
+    result = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
+    if result is None:
+        return False
+    cx, cy, rx, ry, angle = result
+
     img = frame.copy()
 
     cv2.ellipse(img, (cx, cy), (rx, ry), angle, 0, 360, (100, 255, 180), 2)
@@ -537,18 +541,18 @@ def confirm_pool_from_config(frame, cfg):
     print("ENTER = use these   |   ESC = repick")
     print("--------------------------------------------------------------\n")
 
-    result = False
+    confirmed = False
     while True:
         key = cv2.waitKey(20) & 0xFF
         if key in (13, 10):
-            result = True
+            confirmed = True
             break
         elif key == 27:
-            result = False
+            confirmed = False
             break
 
     cv2.destroyWindow(window)
-    return result
+    return confirmed
 
 def main(video_path: str):
     video_path = Path(video_path)
@@ -602,24 +606,22 @@ def main(video_path: str):
 
     r_cm = cfg["pool_radius_cm"]
 
-    raw_rx_px = euclidean_px(west, east) / 2
-    raw_ry_px = euclidean_px(north, south) / 2
+    ellipse = pool_ellipse_from_nsew(west, north, east, south)
+    if ellipse is None:
+        raise RuntimeError("Could not compute pool ellipse from calibration points.")
+    cx, cy, rx, ry, angle = ellipse
+
+    raw_rx_px = math.hypot(east[0] - west[0],   east[1] - west[1])   / 2
+    raw_ry_px = math.hypot(south[0] - north[0],  south[1] - north[1]) / 2
 
     scale_x = r_cm / raw_rx_px
     scale_y = r_cm / raw_ry_px
-
-    cx, cy, rx, ry, angle = perfect_circle_from_nsew(
-        west, north, east, south,
-        pool_radius_cm=r_cm,
-        scale_x=scale_x,
-        scale_y=scale_y,
-    )
 
     pool = (cx, cy, rx, ry, angle)
     pool_mask = make_ellipse_mask((frame_h, frame_w), *pool)
 
     print(f"Pool radius: {r_cm} cm")
-    print(f"Pool ellipse -> centre=({cx},{cy}), rx={rx}px, ry={ry}px")
+    print(f"Pool ellipse -> centre=({cx},{cy}), rx={rx}px, ry={ry}px, angle={angle:.2f}deg")
     print(f"Scale factors -> x: {scale_x:.4f} cm/px  |  y: {scale_y:.4f} cm/px")
 
     OUTPUT_DIR.mkdir(exist_ok=True)
@@ -650,7 +652,7 @@ def main(video_path: str):
 
         gray      = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         timestamp = frame_idx / fps
-        pos       = detect_rat(gray, subtractor, cfg, pool_mask, pool, frame_idx)
+        pos       = detect_rat(gray, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos)
 
         if pos and prev_pos:
             d_px = euclidean_px(prev_pos, pos)
@@ -710,7 +712,6 @@ def main(video_path: str):
             color = (0, int(255 * alpha), int(100 * (1 - alpha)))
             cv2.line(annotated, trail[i - 1], trail[i], color, 2)
 
-        # Rat dot
         if pos:
             cv2.circle(annotated, pos, 8,  (0, 0, 255), -1)
             cv2.circle(annotated, pos, 10, (255, 255, 255), 1)
@@ -846,8 +847,7 @@ def main(video_path: str):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Track a rat in a water maze video.")
+    parser = argparse.ArgumentParser(description="Track a rat in a water maze video.")
     parser.add_argument("--video", required=True, help="Path to the input video file")
     args = parser.parse_args()
     main(args.video)

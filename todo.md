@@ -15,5 +15,3 @@
 ## Final
 
 soundforge ??
-
-konsolda yes yes yes (Başlangıç, bitiş, radius)

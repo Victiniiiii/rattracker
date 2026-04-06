@@ -13,8 +13,13 @@ source venv/bin/activate
 ## Install required packages
 pip install -r requirements.txt
 
-# Usage
+# Script Usage
 
 python main.py --video input/video1.mp4  
 
-python rectangle.py --video input/video3.mp4  
+# Tauri Setup
+
+Needed: cargo, python venv  
+```
+npm i && npm run tauri dev
+```

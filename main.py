@@ -737,12 +737,13 @@ def main(video_path: str):
             pct     = frame_idx / total_frames
             elapsed = time.time() - loop_start
             eta     = (elapsed / pct - elapsed) if pct > 0 else 0
-            bar_w   = 30
-            filled  = int(bar_w * pct)
-            bar     = "#" * filled + "-" * (bar_w - filled)
-            eta_str = f"{int(eta // 60):02d}:{int(eta % 60):02d}"
-            print(f"\r  [{bar}] {pct*100:5.1f}%  |  frame {frame_idx}/{total_frames}"
-                  f"  |  ETA {eta_str}  ", end="", flush=True)
+
+            print(json.dumps({
+                "progress": round(pct * 100, 2),
+                "frame": frame_idx,
+                "total": total_frames,
+                "eta": int(eta)
+            }), flush=True)
 
     cap.release()
     writer.release()
@@ -844,6 +845,7 @@ def main(video_path: str):
     print(f"{'-'*56}")
     print(f"{'TOTAL':<10} {total_q_time:>10.2f} {'100.0':>9}% {total_q_dist:>11.2f} {'100.0':>9}%")
     print(f"----------------------------------------------------------")
+    print(json.dumps({"done": True}), flush=True)
 
 
 if __name__ == "__main__":

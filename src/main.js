@@ -1,18 +1,19 @@
-const { invoke } = window.__TAURI__.core;
+import { invoke } from "https://unpkg.com/@tauri-apps/api@2/core";
 
-let greetInputEl;
-let greetMsgEl;
+document.addEventListener("DOMContentLoaded", () => {
+	let selectedFile = null;
+	const filePathText = document.getElementById("filePath");
+	const runBtn = document.getElementById("runBtn");
 
-async function greet() {
-  // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-  greetMsgEl.textContent = await invoke("greet", { name: greetInputEl.value });
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    greet();
-  });
+	document.getElementById("selectFile").onclick = async () => {
+		try {
+			selectedFile = await invoke("pick_file");
+			if (selectedFile) {
+				filePathText.textContent = selectedFile;
+				runBtn.disabled = false;
+			}
+		} catch (e) {
+			console.log("No file selected or error:", e);
+		}
+	};
 });

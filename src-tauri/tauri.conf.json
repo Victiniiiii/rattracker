@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "rattracker",
+        "title": "Rat Tracker",
         "width": 800,
         "height": 600
       }

@@ -1,17 +1,13 @@
-## Features
+## List
 
-- rectangle needs to check for the center (or we can decide on that)
-- "GATED"
-- replace all fonts
-- check if the font is copyrighted or just use a different one or just use the regular and fix 720p
-- Separate config.json for different scripts?
-
-## Tauri
-
-- Create a basic UI with tabs for future projects and an update button in-app.
-- Make an input for the radius of the pool.
-- Make a video file picker and pick where to output it
+- Make a basic UI.
+- Make a settings page. Separate needed settings and less needed settings (like pool radius vs mog).
+- Make a div for app version. Updates will be distributed by hand.
+- Modify the python code to get rid of input() lines. Move them to system arguments. Like every setting. They wont be needed for the script to start though. If not in the arguments, make it default.
+- Use Nuitka to package the python code.
+- Create a script to automatically do all the compilation steps. (First checks for all the dependencies, warns if any is missing. Then, does everything like npm i, compile python code, etc.)
+- Add back features like center/quadrants and rectangle/circle
 
 ## Final
 
-soundforge ??
+soundforge ?? publishments ??

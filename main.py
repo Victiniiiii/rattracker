@@ -7,28 +7,6 @@ import argparse
 import time
 from pathlib import Path
 
-# DEFAULT CONFIG
-
-DEFAULTS = {
-    "mog2_history":       120,
-    "mog2_threshold":     40,
-    "mog2_detect_shadow": False,
-    "morph_open_k":       3,
-    "morph_close_k":      15,
-    "min_contour_area":   300,
-    "max_contour_area":   12000,
-    "trail_len":          40,
-    "debug_frames":       0,
-    "pool_radius_cm":     60,
-    "pool_west":          None,
-    "pool_north":         None,
-    "pool_east":          None,
-    "pool_south":         None,
-}
-
-CONFIG_FILE = Path(__file__).parent / "config.json"
-OUTPUT_DIR  = Path(__file__).parent / "output"
-
 QUADRANT_NAMES  = ["NE", "NW", "SW", "SE"]
 QUADRANT_COLORS = {
     "NE": (0,   200, 255),
@@ -37,65 +15,12 @@ QUADRANT_COLORS = {
     "SE": (180,   0, 255),
 }
 
-# CONFIG I/O
-
-def load_config() -> dict:
-    if CONFIG_FILE.exists():
-        with open(CONFIG_FILE, "r") as f:
-            saved = json.load(f)
-        cfg = {**DEFAULTS, **saved}
-        for key in ("pool_west", "pool_north", "pool_east", "pool_south"):
-            if cfg[key] is not None:
-                cfg[key] = tuple(cfg[key])
-        return cfg
-    return dict(DEFAULTS)
-
-
-def save_config(cfg: dict):
-    serialisable = {}
-    for k, v in cfg.items():
-        serialisable[k] = list(v) if isinstance(v, tuple) else v
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(serialisable, f, indent=2)
-
-
-def pool_coords_valid(cfg: dict) -> bool:
-    return all(cfg.get(k) is not None
-               for k in ("pool_west", "pool_north", "pool_east", "pool_south"))
-
-
-def parse_time_input(inp: str) -> float:
-    inp = inp.strip()
-    if not inp:
-        return None
-    if ':' in inp:
-        parts = inp.split(':')
-        if len(parts) == 2:
-            minutes, seconds = parts
-            return int(minutes) * 60 + int(seconds)
-    return float(inp)
-
-def get_video_params(default_radius=60):
-    start_inp = input("Video start time (Press Enter for regular start, or type 00:05 / 5): ")
-    end_inp   = input("Video ending time (Press Enter for regular end, or type 01:02 / 62): ")
-    radius_inp = input(f"Pool radius in cm (Press Enter for {default_radius}): ")
-
-    start_sec = parse_time_input(start_inp)
-    end_sec   = parse_time_input(end_inp)
-    pool_radius_cm = float(radius_inp) if radius_inp.strip() else default_radius
-
-    print(f"Using parameters -> Start: {start_sec or 'default'} s, End: {end_sec or 'default'} s, Pool radius: {pool_radius_cm} cm\n")
-    return start_sec, end_sec, pool_radius_cm
-
-# POOL CALIBRATION
-
 CALIB_STEPS = [
     ("WEST",  "Click on the WEST point of the pool edge"),
     ("NORTH", "Click on the NORTH point of the pool edge"),
     ("EAST",  "Click on the EAST point of the pool edge"),
     ("SOUTH", "Click on the SOUTH point of the pool edge"),
 ]
-
 CALIB_COLORS = {
     "WEST":  (255, 140, 0),
     "NORTH": (50, 205, 50),
@@ -103,7 +28,13 @@ CALIB_COLORS = {
     "SOUTH": (238, 58, 140),
 }
 
-def run_calibration(frame: np.ndarray, pool_radius_cm=None) -> dict | None:
+## Calibration
+
+def pool_coords_valid(cfg: dict) -> bool:
+    return all(cfg.get(k) is not None
+               for k in ("pool_west", "pool_north", "pool_east", "pool_south"))
+
+def run_calibration(frame: np.ndarray) -> dict | None:
     state = {"step": 0, "points": {}, "frame": frame.copy()}
     window = "Pool Calibration"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
@@ -121,13 +52,11 @@ def run_calibration(frame: np.ndarray, pool_radius_cm=None) -> dict | None:
         else:
             cv2.putText(img, "All 4 points set -- press ENTER to confirm or R to redo", (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (100, 255, 180), 1)
             cv2.putText(img, "Press  ESC  to abort without saving", (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
-
         for cardinal, pt in state["points"].items():
             col = CALIB_COLORS[cardinal]
             cv2.circle(img, pt, 7, col, -1)
             cv2.circle(img, pt, 9, (255, 255, 255), 1)
             cv2.putText(img, cardinal, (pt[0] + 11, pt[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
-
         if len(state["points"]) == 4:
             p = state["points"]
             result = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
@@ -137,7 +66,6 @@ def run_calibration(frame: np.ndarray, pool_radius_cm=None) -> dict | None:
                 cv2.circle(img, (cx, cy), 5, (100, 255, 180), -1)
                 cv2.line(img, p["NORTH"], p["SOUTH"], (100, 255, 180), 1)
                 cv2.line(img, p["WEST"],  p["EAST"],  (100, 255, 180), 1)
-
         return img
 
     def on_click(event, x, y, flags, param):
@@ -163,55 +91,48 @@ def run_calibration(frame: np.ndarray, pool_radius_cm=None) -> dict | None:
             cv2.imshow(window, draw(state["frame"]))
         elif key in (13, 10):
             p = state["points"]
-            result = {
-                "pool_west":  p["WEST"],
-                "pool_north": p["NORTH"],
-                "pool_east":  p["EAST"],
-                "pool_south": p["SOUTH"],
-            }
-            break
+            if len(p) == 4:
+                result = {
+                    "pool_west":  p["WEST"],
+                    "pool_north": p["NORTH"],
+                    "pool_east":  p["EAST"],
+                    "pool_south": p["SOUTH"],
+                }
+                break
         cv2.imshow(window, draw(state["frame"]))
 
     cv2.destroyWindow(window)
     return result
 
-def confirm_pool_from_config(frame, cfg):
+def confirm_pool_from_args(frame, cfg):
     p = {
         "WEST":  cfg["pool_west"],
         "NORTH": cfg["pool_north"],
         "EAST":  cfg["pool_east"],
         "SOUTH": cfg["pool_south"],
     }
-
     result = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
     if result is None:
         return False
     cx, cy, rx, ry, angle = result
-
     img = frame.copy()
-
     cv2.ellipse(img, (cx, cy), (rx, ry), angle, 0, 360, (100, 255, 180), 2)
     cv2.circle(img, (cx, cy), 5, (100, 255, 180), -1)
     cv2.circle(img, (cx, cy), 7, (255, 255, 255), 1)
-
     cv2.line(img, p["NORTH"], p["SOUTH"], (100, 255, 180), 1)
     cv2.line(img, p["WEST"],  p["EAST"],  (100, 255, 180), 1)
-
     for cardinal, pt in p.items():
         col = CALIB_COLORS[cardinal]
         cv2.circle(img, pt, 7, col, -1)
         cv2.circle(img, pt, 9, (255, 255, 255), 1)
         cv2.putText(img, cardinal, (pt[0] + 11, pt[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
-
     draw_transparent_banner(img, 0, 0, frame.shape[1], 70)
     cv2.putText(img, "Saved pool coordinates found -- confirm or repick?", (12, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (100, 255, 180), 1)
     cv2.putText(img, "ENTER  -->  Continue with these coordinates     ESC  -->  Repick", (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (180, 180, 180), 1)
-
     window = "Pool Confirmation"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(window, min(frame.shape[1], 1280), min(frame.shape[0], 720))
     cv2.imshow(window, img)
-
     confirmed = False
     while True:
         key = cv2.waitKey(20) & 0xFF
@@ -221,90 +142,69 @@ def confirm_pool_from_config(frame, cfg):
         elif key == 27:
             confirmed = False
             break
-
     cv2.destroyWindow(window)
     return confirmed
 
-# GEOMETRY HELPERS
+## Pool Calculations
 
 def pool_ellipse_from_nsew(west, north, east, south):
     cx = (west[0] + east[0] + north[0] + south[0]) / 4
     cy = (west[1] + east[1] + north[1] + south[1]) / 4
-
     r1x = east[0] - cx
     r1y = east[1] - cy
     r2x = north[0] - cx
     r2y = north[1] - cy
-
     M = np.array([
         [r1x*r1x + r2x*r2x, r1x*r1y + r2x*r2y],
         [r1x*r1y + r2x*r2y, r1y*r1y + r2y*r2y],
     ], dtype=np.float64)
-
     eigenvalues, eigenvectors = np.linalg.eigh(M)
     rx = int(round(math.sqrt(eigenvalues[1])))
     ry = int(round(math.sqrt(eigenvalues[0])))
     angle = math.degrees(math.atan2(eigenvectors[1, 1], eigenvectors[0, 1]))
-
     return int(round(cx)), int(round(cy)), rx, ry, angle
-
 
 def make_ellipse_mask(shape, cx, cy, rx, ry, angle):
     mask = np.zeros(shape[:2], dtype=np.uint8)
     cv2.ellipse(mask, (cx, cy), (rx, ry), angle, 0, 360, 255, -1)
     return mask
 
-
 def point_in_ellipse(x, y, cx, cy, rx, ry, angle) -> bool:
     px = x - cx
     py = y - cy
-
     theta = -math.radians(angle)
     cos_t = math.cos(theta)
     sin_t = math.sin(theta)
-
     xr = px * cos_t - py * sin_t
     yr = px * sin_t + py * cos_t
-
     return (xr / rx) ** 2 + (yr / ry) ** 2 <= 1.0
-
 
 def euclidean_px(p1, p2) -> float:
     return math.sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2)
-
 
 def euclidean_cm(p1, p2, scale_x, scale_y) -> float:
     dx_real = (p2[0] - p1[0]) * scale_x
     dy_real = (p2[1] - p1[1]) * scale_y
     return math.sqrt(dx_real**2 + dy_real**2)
 
-
 def cross2d(ax, ay, bx, by) -> float:
     return ax * by - ay * bx
-
 
 def get_quadrant(x, y, west, north, east, south) -> str:
     center = line_intersection(west, east, north, south)
     if center is None:
         return "UNKNOWN"
-
     cx, cy = center
-
     we_dx = east[0] - west[0]
     we_dy = east[1] - west[1]
-
     ns_dx = south[0] - north[0]
     ns_dy = south[1] - north[1]
-
     px = x - cx
     py = y - cy
-
     side_ns = cross2d(ns_dx, ns_dy, px, py)
     side_we = cross2d(we_dx, we_dy, px, py)
-
     east_side  = side_ns < 0
     south_side = side_we > 0
-
     if east_side and not south_side:
         return "NE"
     elif not east_side and not south_side:
@@ -319,14 +219,11 @@ def line_intersection(p1, p2, p3, p4):
     x2, y2 = p2
     x3, y3 = p3
     x4, y4 = p4
-
     denom = (x1 - x2)*(y3 - y4) - (y1 - y2)*(x3 - x4)
     if abs(denom) < 1e-9:
         return None
-
     px = ((x1*y2 - y1*x2)*(x3 - x4) - (x1 - x2)*(x3*y4 - y3*x4)) / denom
     py = ((x1*y2 - y1*x2)*(y3 - y4) - (y1 - y2)*(x3*y4 - y3*x4)) / denom
-
     return px, py
 
 def line_segment_intersection_t(p1, p2, q1, q2):
@@ -334,16 +231,12 @@ def line_segment_intersection_t(p1, p2, q1, q2):
     dy = p2[1] - p1[1]
     qx = q2[0] - q1[0]
     qy = q2[1] - q1[1]
-
     denom = cross2d(dx, dy, qx, qy)
-
     if abs(denom) < 1e-9:
         return None
-    
     wx = q1[0] - p1[0]
     wy = q1[1] - p1[1]
-
-    t = cross2d(wx, wy, qx, qy) / denom    
+    t = cross2d(wx, wy, qx, qy) / denom
     return t
 
 def segment_quadrant_splits(p1, p2, west, north, east, south):
@@ -351,19 +244,14 @@ def segment_quadrant_splits(p1, p2, west, north, east, south):
     x2, y2 = p2[0], p2[1]
     dx = x2 - x1
     dy = y2 - y1
-
     t_vals = [0.0, 1.0]
-
     t_ns = line_segment_intersection_t(p1, p2, north, south)
     if t_ns is not None and 0.0 < t_ns < 1.0:
         t_vals.append(t_ns)
-
     t_we = line_segment_intersection_t(p1, p2, west, east)
     if t_we is not None and 0.0 < t_we < 1.0:
         t_vals.append(t_we)
-
     t_vals = sorted(set(t_vals))
-
     splits = []
     for i in range(len(t_vals) - 1):
         t_a = t_vals[i]
@@ -376,36 +264,28 @@ def segment_quadrant_splits(p1, p2, west, north, east, south):
         ym = (ya + yb) / 2
         q  = get_quadrant(xm, ym, west, north, east, south)
         splits.append(((xa, ya), (xb, yb), q))
-
     return splits
 
-# QUADRANT STATS ACCUMULATOR
+## Calculations
 
 def empty_quadrant_stats():
     return {q: {"time_s": 0.0, "dist_cm": 0.0} for q in QUADRANT_NAMES}
 
-
 def accumulate_segment(stats, p1, p2, west, north, east, south, frame_dt, scale_x, scale_y):
     total_dist_px = euclidean_px(p1, p2)
     splits = segment_quadrant_splits(p1, p2, west, north, east, south)
-
     for idx, (sa, sb, q) in enumerate(splits):
         sub_dist_px = euclidean_px(sa, sb)
         if total_dist_px > 0:
             frac = sub_dist_px / total_dist_px
         else:
             frac = 1.0 if idx == 0 else 0.0
-
         stats[q]["time_s"]  += frac * frame_dt
         stats[q]["dist_cm"] += euclidean_cm(sa, sb, scale_x, scale_y)
-
 
 def accumulate_static(stats, pos, west, north, east, south, frame_dt):
     q = get_quadrant(pos[0], pos[1], west, north, east, south)
     stats[q]["time_s"] += frame_dt
-
-
-# ON-SCREEN LEADERBOARD RENDERER
 
 def draw_transparent_banner(img, x0, y0, x1, y1, alpha=0.72):
     overlay = img.copy()
@@ -415,60 +295,47 @@ def draw_transparent_banner(img, x0, y0, x1, y1, alpha=0.72):
 
 def draw_leaderboard(img, stats, total_time_s, total_dist_cm):
     sorted_q = ["NW", "NE", "SW", "SE"]
-
     panel_w  = 310
     row_h    = 22
     pad      = 8
     n_rows   = len(QUADRANT_NAMES)
     header_h = 24
     panel_h  = header_h + n_rows * row_h + pad
-
     x0 = img.shape[1] - panel_w - 8
     y0 = 8
     x1 = x0 + panel_w
     y1 = y0 + panel_h
-
     overlay = img.copy()
     cv2.rectangle(overlay, (x0, y0), (x1, y1), (10, 10, 10), -1)
     cv2.addWeighted(overlay, 0.72, img, 0.28, 0, img)
     cv2.rectangle(img, (x0, y0), (x1, y1), (80, 80, 80), 1)
     cv2.putText(img, "QUADRANT LEADERBOARD", (x0 + pad, y0 + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.44, (200, 200, 200), 1)
-
     for rank, q in enumerate(sorted_q):
         t_s   = stats[q]["time_s"]
         d_cm  = stats[q]["dist_cm"]
-        t_pct = (t_s   / total_time_s   * 100) if total_time_s   > 0 else 0.0
-        d_pct = (d_cm  / total_dist_cm  * 100) if total_dist_cm  > 0 else 0.0
+        t_pct = (t_s  / total_time_s  * 100) if total_time_s  > 0 else 0.0
+        d_pct = (d_cm / total_dist_cm * 100) if total_dist_cm > 0 else 0.0
         color = QUADRANT_COLORS[q]
-
         row_y = y0 + header_h + rank * row_h + row_h - 4
-
         cv2.putText(img, f"#{rank+1} {q}", (x0 + pad, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.44, color, 1)
         cv2.putText(img, f"T:{t_s:5.1f}s {t_pct:4.1f}%", (x0 + pad + 52, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (220, 220, 220), 1)
         cv2.putText(img, f"D:{d_cm:6.1f}cm {d_pct:4.1f}%", (x0 + pad + 166, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 200, 50), 1)
 
-
-# RAT DETECTION
+## Rat Detection
 
 def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, prev_pos=None):
     if len(frame.shape) == 3:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
     fg_mask = subtractor.apply(frame)
-
     if pool_mask is not None:
         fg_mask = cv2.bitwise_and(fg_mask, fg_mask, mask=pool_mask)
-
     k_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (cfg["morph_open_k"],  cfg["morph_open_k"]))
     k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (cfg["morph_close_k"], cfg["morph_close_k"]))
     fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_OPEN,  k_open)
     fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_CLOSE, k_close)
-
     if cfg["debug_frames"] > 0 and frame_idx < cfg["debug_frames"]:
         cv2.imwrite(f"debug_frame_{frame_idx:03d}.png", fg_mask)
-
     contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
     candidates = []
     for cnt in contours:
         area = cv2.contourArea(cnt)
@@ -482,20 +349,14 @@ def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, p
         if pool is not None and not point_in_ellipse(bx, by, *pool):
             continue
         candidates.append((bx, by, area))
-
     if not candidates:
         return None
-
     if prev_pos is not None:
         candidates.sort(key=lambda c: euclidean_px(prev_pos, (c[0], c[1])))
     else:
         candidates.sort(key=lambda c: c[2], reverse=True)
-
     bx, by, _ = candidates[0]
     return (bx, by)
-
-
-# INTERPOLATION
 
 def interpolate_missing(records: list) -> list:
     n      = len(records)
@@ -523,15 +384,51 @@ def interpolate_missing(records: list) -> list:
             i += 1
     return result
 
-def main(video_path: str):
-    video_path = Path(video_path)
+def parse_point(s):
+    parts = s.split(",")
+    return (int(parts[0]), int(parts[1]))
+
+def main():
+    parser = argparse.ArgumentParser(description="Track a rat in a water maze video.")
+    parser.add_argument("--video",               required=True,  type=str)
+    parser.add_argument("--start",               default=None,   type=float,  help="Start time in seconds")
+    parser.add_argument("--end",                 default=None,   type=float,  help="End time in seconds")
+    parser.add_argument("--pool_radius_cm",      default=60,     type=float)
+    parser.add_argument("--mog2_history",        default=120,    type=int)
+    parser.add_argument("--mog2_threshold",      default=40,     type=float)
+    parser.add_argument("--mog2_detect_shadow",  default=False,  action="store_true")
+    parser.add_argument("--morph_open_k",        default=3,      type=int)
+    parser.add_argument("--morph_close_k",       default=15,     type=int)
+    parser.add_argument("--min_contour_area",    default=300,    type=float)
+    parser.add_argument("--max_contour_area",    default=12000,  type=float)
+    parser.add_argument("--trail_len",           default=40,     type=int)
+    parser.add_argument("--debug_frames",        default=0,      type=int)
+    parser.add_argument("--pool_west",           default=None,   type=str,    help="x,y")
+    parser.add_argument("--pool_north",          default=None,   type=str,    help="x,y")
+    parser.add_argument("--pool_east",           default=None,   type=str,    help="x,y")
+    parser.add_argument("--pool_south",          default=None,   type=str,    help="x,y")
+    args = parser.parse_args()
+
+    cfg = {
+        "pool_radius_cm":     args.pool_radius_cm,
+        "mog2_history":       args.mog2_history,
+        "mog2_threshold":     args.mog2_threshold,
+        "mog2_detect_shadow": args.mog2_detect_shadow,
+        "morph_open_k":       args.morph_open_k,
+        "morph_close_k":      args.morph_close_k,
+        "min_contour_area":   args.min_contour_area,
+        "max_contour_area":   args.max_contour_area,
+        "trail_len":          args.trail_len,
+        "debug_frames":       args.debug_frames,
+        "pool_west":          parse_point(args.pool_west)  if args.pool_west  else None,
+        "pool_north":         parse_point(args.pool_north) if args.pool_north else None,
+        "pool_east":          parse_point(args.pool_east)  if args.pool_east  else None,
+        "pool_south":         parse_point(args.pool_south) if args.pool_south else None,
+    }
+
+    video_path = Path(args.video)
     if not video_path.exists():
         raise FileNotFoundError(f"Video not found: {video_path}")
-
-    start_sec, end_sec, pool_radius_cm = get_video_params()
-    DEFAULTS["pool_radius_cm"] = pool_radius_cm
-
-    cfg = load_config()
 
     cap          = cv2.VideoCapture(str(video_path))
     fps          = cap.get(cv2.CAP_PROP_FPS) or 4.0
@@ -540,51 +437,53 @@ def main(video_path: str):
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     frame_dt     = 1.0 / fps
 
+    start_frame = int(args.start * fps) if args.start is not None else 0
+    end_frame   = int(args.end   * fps) if args.end   is not None else total_frames
+
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
     ret, first_frame = cap.read()
     if not ret:
         raise RuntimeError("Could not read first frame from video.")
 
-    if not pool_coords_valid(cfg):
-        result = run_calibration(first_frame, pool_radius_cm)
-        if result is None:
-            raise RuntimeError("Pool calibration is required. Please re-run and complete calibration.")
-        cfg.update(result)
-        save_config(cfg)
+    if pool_coords_valid(cfg):
+        confirmed = confirm_pool_from_args(first_frame, cfg)
+        if not confirmed:
+            result = run_calibration(first_frame)
+            if result is None:
+                raise RuntimeError("Pool calibration aborted.")
+            cfg.update(result)
     else:
-        result = run_calibration(first_frame, pool_radius_cm)
+        result = run_calibration(first_frame)
         if result is None:
-            raise RuntimeError("Pool calibration is required. Please re-run and complete calibration.")
+            raise RuntimeError("Pool calibration aborted.")
         cfg.update(result)
-        save_config(cfg)
 
-    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
     west  = cfg["pool_west"]
     north = cfg["pool_north"]
     east  = cfg["pool_east"]
     south = cfg["pool_south"]
-
-    r_cm = cfg["pool_radius_cm"]
+    r_cm  = cfg["pool_radius_cm"]
 
     ellipse = pool_ellipse_from_nsew(west, north, east, south)
     if ellipse is None:
         raise RuntimeError("Could not compute pool ellipse from calibration points.")
     cx, cy, rx, ry, angle = ellipse
 
-    raw_rx_px = math.hypot(east[0] - west[0],   east[1] - west[1])   / 2
-    raw_ry_px = math.hypot(south[0] - north[0],  south[1] - north[1]) / 2
-
+    raw_rx_px = math.hypot(east[0] - west[0],  east[1] - west[1])  / 2
+    raw_ry_px = math.hypot(south[0] - north[0], south[1] - north[1]) / 2
     scale_x = r_cm / raw_rx_px
     scale_y = r_cm / raw_ry_px
 
-    pool = (cx, cy, rx, ry, angle)
+    pool      = (cx, cy, rx, ry, angle)
     pool_mask = make_ellipse_mask((frame_h, frame_w), *pool)
 
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    video_out = OUTPUT_DIR / (video_path.stem + "_tracked.mp4")
-    fourcc    = cv2.VideoWriter_fourcc(*"mp4v")
-    writer    = cv2.VideoWriter(str(video_out), fourcc, fps, (frame_w, frame_h))
+    output_dir = video_path.parent
+    video_out  = output_dir / (video_path.stem + "_tracked.mp4")
+    fourcc     = cv2.VideoWriter_fourcc(*"mp4v")
+    writer     = cv2.VideoWriter(str(video_out), fourcc, fps, (frame_w, frame_h))
 
     subtractor = cv2.createBackgroundSubtractorMOG2(
         history       = cfg["mog2_history"],
@@ -598,18 +497,22 @@ def main(video_path: str):
     running_dist_px = 0.0
     running_dist_cm = 0.0
     prev_pos        = None
+    q_stats         = empty_quadrant_stats()
+    loop_start      = time.time()
 
-    q_stats = empty_quadrant_stats()
-    loop_start = time.time()
+    processable_frames = end_frame - start_frame
 
     while True:
+        current_pos = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+        if current_pos >= end_frame:
+            break
+
         ret, frame = cap.read()
         if not ret:
             break
 
-        gray      = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        timestamp = frame_idx / fps
-        pos       = detect_rat(gray, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos)
+        timestamp = (start_frame + frame_idx) / fps
+        pos       = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos)
 
         if pos and prev_pos:
             d_px = euclidean_px(prev_pos, pos)
@@ -626,7 +529,7 @@ def main(video_path: str):
             prev_pos = pos
 
         records.append({
-            "frame":        frame_idx,
+            "frame":        start_frame + frame_idx,
             "timestamp_s":  round(timestamp, 4),
             "x":            pos[0] if pos else None,
             "y":            pos[1] if pos else None,
@@ -634,7 +537,6 @@ def main(video_path: str):
         })
 
         annotated = frame.copy()
-
         cv2.ellipse(annotated, (cx, cy), (rx, ry), angle, 0, 360, (255, 100, 0), thickness=2)
         cv2.line(annotated, north, south, (255, 100, 0), 1)
         cv2.line(annotated, west,  east,  (255, 100, 0), 1)
@@ -655,20 +557,17 @@ def main(video_path: str):
             "SW": quadrant_label_pos(south, west),
             "SE": quadrant_label_pos(south, east),
         }
-
         for q, lp in q_label_positions.items():
-            cv2.putText(annotated, q, lp,
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, QUADRANT_COLORS[q], 1)
+            cv2.putText(annotated, q, lp, cv2.FONT_HERSHEY_SIMPLEX, 0.5, QUADRANT_COLORS[q], 1)
 
         if pos:
             trail.append(pos)
-        if len(trail) > cfg["trail_len"]:
-            trail.pop(0)
+            if len(trail) > cfg["trail_len"]:
+                trail.pop(0)
         for i in range(1, len(trail)):
             alpha = i / len(trail)
             color = (0, int(255 * alpha), int(100 * (1 - alpha)))
             cv2.line(annotated, trail[i - 1], trail[i], color, 2)
-
         if pos:
             cv2.circle(annotated, pos, 8,  (0, 0, 255), -1)
             cv2.circle(annotated, pos, 10, (255, 255, 255), 1)
@@ -690,23 +589,21 @@ def main(video_path: str):
         writer.write(annotated)
         frame_idx += 1
 
-        if total_frames > 0:
-            pct     = frame_idx / total_frames
+        if processable_frames > 0:
+            pct     = frame_idx / processable_frames
             elapsed = time.time() - loop_start
             eta     = (elapsed / pct - elapsed) if pct > 0 else 0
-
             print(json.dumps({
                 "progress": round(pct * 100, 2),
-                "frame": frame_idx,
-                "total": total_frames,
-                "eta": int(eta)
+                "frame":    frame_idx,
+                "total":    processable_frames,
+                "eta":      int(eta),
             }), flush=True)
 
     cap.release()
     writer.release()
 
-    detected = sum(1 for r in records if r["x"] is not None)
-
+    detected      = sum(1 for r in records if r["x"] is not None)
     records       = interpolate_missing(records)
     missing_after = sum(1 for r in records if r["x"] is None)
 
@@ -714,7 +611,6 @@ def main(video_path: str):
     total_dist_cm = 0.0
     valid_pairs   = 0
     prev          = None
-
     q_stats_final = empty_quadrant_stats()
 
     for rec in records:
@@ -734,15 +630,14 @@ def main(video_path: str):
     total_q_time = sum(v["time_s"]  for v in q_stats_final.values())
     total_q_dist = sum(v["dist_cm"] for v in q_stats_final.values())
 
-    csv_path = OUTPUT_DIR / f"{video_path.stem}_coordinates.csv"
+    csv_path = output_dir / f"{video_path.stem}_coordinates.csv"
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer_csv = csv.DictWriter(f, fieldnames=["frame", "timestamp_s", "x", "y", "interpolated"])
         writer_csv.writeheader()
         writer_csv.writerows(records)
 
-    sorted_q = sorted(QUADRANT_NAMES, key=lambda q: q_stats_final[q]["time_s"], reverse=True)
-
-    summary_path = OUTPUT_DIR / f"{video_path.stem}_summary.txt"
+    sorted_q     = sorted(QUADRANT_NAMES, key=lambda q: q_stats_final[q]["time_s"], reverse=True)
+    summary_path = output_dir / f"{video_path.stem}_summary.txt"
     with open(summary_path, "w", encoding="utf-8") as f:
         lines = [
             f"Video           : {video_path.name}",
@@ -773,14 +668,21 @@ def main(video_path: str):
             t_pct = (t_s  / total_q_time * 100) if total_q_time > 0 else 0.0
             d_pct = (d_cm / total_q_dist * 100) if total_q_dist > 0 else 0.0
             lines.append(f"{q:<10} {t_s:>10.2f} {t_pct:>9.1f}% {d_cm:>11.2f} {d_pct:>9.1f}%")
-        lines += [f"{'-'*56}", f"{'TOTAL':<10} {total_q_time:>10.2f} {'100.0':>9}% {total_q_dist:>11.2f} {'100.0':>9}%",]
+        lines += [
+            f"{'-'*56}",
+            f"{'TOTAL':<10} {total_q_time:>10.2f} {'100.0':>9}% {total_q_dist:>11.2f} {'100.0':>9}%",
+        ]
         f.write("\n".join(lines))
 
-    print(json.dumps({"done": True}), flush=True)
-
+    print(json.dumps({
+        "done":          True,
+        "video_out":     str(video_out),
+        "csv_out":       str(csv_path),
+        "summary_out":   str(summary_path),
+        "total_dist_cm": round(total_dist_cm, 2),
+        "total_frames":  frame_idx,
+        "detected":      detected,
+    }), flush=True)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Track a rat in a water maze video.")
-    parser.add_argument("--video", required=True, help="Path to the input video file")
-    args = parser.parse_args()
-    main(args.video)
+    main()

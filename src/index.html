@@ -9,30 +9,147 @@
 		<h1>Rat Tracker</h1>
 
 		<div id="version-language-div">
-			<div id="language"></div> <!-- The flags are at /assets/fr.svg (same as tr.svg and uk.svg)-->
+			<div id="language">
+				<img src="assets/uk.svg" alt="English" class="lang-flag" data-lang="en" />
+				<img src="assets/fr.svg" alt="French" class="lang-flag" data-lang="fr" />
+				<img src="assets/tr.svg" alt="Turkish" class="lang-flag" data-lang="tr" />
+			</div>
 			<div id="version">Version: 1.0.0</div>
 		</div>
 
-		<button id="settings">Settings</button> <!-- /assets/settings.svg (the icon)-->
+		<button id="settings">
+			<img width="20px" height="20px" src="assets/settings.svg" alt="Settings" />
+		</button>
+
+		<div id="settingsPanel" hidden>
+			<form id="configForm">
+				<h2>Detection Settings</h2>
+
+				<label
+					>MOG2 History
+					<input type="number" name="mog2_history" min="1" value="120" />
+				</label>
+
+				<label
+					>MOG2 Threshold
+					<input type="number" name="mog2_threshold" min="1" value="40" />
+				</label>
+
+				<label
+					>Detect Shadows
+					<input type="checkbox" name="mog2_detect_shadow" />
+				</label>
+
+				<label
+					>Morph Open Kernel
+					<input type="number" name="morph_open_k" min="1" step="2" value="3" />
+				</label>
+
+				<label
+					>Morph Close Kernel
+					<input type="number" name="morph_close_k" min="1" step="2" value="15" />
+				</label>
+
+				<label
+					>Min Contour Area (px²)
+					<input type="number" name="min_contour_area" min="0" value="300" />
+				</label>
+
+				<label
+					>Max Contour Area (px²)
+					<input type="number" name="max_contour_area" min="0" value="12000" />
+				</label>
+
+				<label
+					>Trail Length (frames)
+					<input type="number" name="trail_len" min="1" value="40" />
+				</label>
+
+				<label
+					>Debug Frames
+					<input type="number" name="debug_frames" min="0" value="0" />
+				</label>
+
+				<h2>Pool Calibration Cache</h2>
+				<p id="calibNote">These are auto-filled after the first calibration. Edit to reuse across runs.</p>
+
+				<label
+					>Pool West (x,y)
+					<input type="text" name="pool_west" placeholder="e.g. 320,240" />
+				</label>
+				<label
+					>Pool North (x,y)
+					<input type="text" name="pool_north" placeholder="e.g. 640,120" />
+				</label>
+				<label
+					>Pool East (x,y)
+					<input type="text" name="pool_east" placeholder="e.g. 960,240" />
+				</label>
+				<label
+					>Pool South (x,y)
+					<input type="text" name="pool_south" placeholder="e.g. 640,360" />
+				</label>
+
+				<div id="settingsBtns">
+					<button type="submit">Save Settings</button>
+					<button type="button" id="closeSettings">Cancel</button>
+				</div>
+			</form>
+		</div>
 
 		<div id="mainDiv">
 			<div id="beforeScript">
 				<button id="selectFile">Select Video</button>
 				<p id="filePath">No file selected</p>
-				<input type="text" placeholder="Video Start" />
-				<input type="text" placeholder="Video End" />
+
+				<label
+					>Start Time (seconds)
+					<input type="number" id="startTime" min="0" step="0.1" placeholder="Default: beginning" />
+				</label>
+
+				<label
+					>End Time (seconds)
+					<input type="number" id="endTime" min="0" step="0.1" placeholder="Default: end" />
+				</label>
+
+				<label
+					>Pool Radius (cm)
+					<input type="number" id="poolRadius" min="1" value="60" step="0.5" />
+				</label>
+
 				<button id="runBtn" disabled>Run</button>
 			</div>
-			<div id="duringScript">
+
+			<div id="duringScript" hidden>
+				<div id="progressInfo">
+					<span id="progressText">0%</span>
+					<span id="etaText"></span>
+					<span id="frameText"></span>
+				</div>
 				<progress id="progressBar" value="0" max="100"></progress>
-				<span id="progressText">0%</span>
-				<button id="cancelBtn" disabled>Cancel</button>
+				<button id="cancelBtn">Cancel</button>
 			</div>
-			<div id="afterScript">
-				<!-- output video shown in html -->
-				<!-- output csv shown in html -->
-				<!-- output text shown in html -->
-				<!-- a dropdown to switch between these three-->
+
+			<div id="afterScript" hidden>
+				<div id="outputTabs">
+					<button class="tab active" data-tab="video">Video</button>
+					<button class="tab" data-tab="csv">CSV</button>
+					<button class="tab" data-tab="summary">Summary</button>
+				</div>
+
+				<div id="tabVideo" class="tabContent">
+					<video id="outputVideo" controls></video>
+				</div>
+
+				<div id="tabCsv" class="tabContent" hidden>
+					<div id="csvTable"></div>
+				</div>
+
+				<div id="tabSummary" class="tabContent" hidden>
+					<pre id="summaryText"></pre>
+				</div>
+
+				<button id="runAgainBtn">Run Again</button>
 			</div>
 		</div>
 

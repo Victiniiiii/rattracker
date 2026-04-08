@@ -1,9 +1,11 @@
+# App Specific
 /output/
 /input/
+config.json
+
+# Python
 /venv/
 /__pycache__
-
-config.json
 
 # Logs
 logs
@@ -29,3 +31,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Nuitka
+main.build/
+main.dist/

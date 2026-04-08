@@ -35,3 +35,7 @@ dist-ssr
 # Nuitka
 main.build/
 main.dist/
+main.onefile-build/
+main.exe
+main
+main.bin

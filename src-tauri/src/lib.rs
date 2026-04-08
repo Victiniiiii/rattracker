@@ -1,6 +1,7 @@
 // src-tauri/src/lib.rs
 
 use tauri_plugin_dialog::DialogExt;
+use tauri::command;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -14,17 +15,12 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-#[tauri::command]
-fn pick_file(app: tauri::AppHandle) -> Result<String, String> {
-    let path = app
-        .dialog()
-        .file()
-        .blocking_pick_file()
-        .ok_or_else(|| "No file selected".to_string())?;
-
-    let path_buf = path
-        .into_path()
-        .map_err(|_| "Selected file cannot be converted to a local path".to_string())?;
-
-    Ok(path_buf.to_string_lossy().to_string())
+#[command]
+async fn pick_file(app: tauri::AppHandle) -> Result<String, String> {
+    match app.dialog().file().blocking_pick_file() {
+        Some(path) => path.into_path()
+            .map(|p| p.to_string_lossy().to_string())
+            .map_err(|e| e.to_string()),
+        None => Err("No file selected".into()),
+    }
 }

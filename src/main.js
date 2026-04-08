@@ -8,9 +8,10 @@ platform = tauri.os.platform;
 
 // TODO: Fix this weird imports
 
-// TODO: Select file function freezes app. Maybe because of adding it to the invoke_handler? Check git history
-
 // TODO: One more TODO below
+
+// TODO: Disallow tauri reading everywhere ("*" at config)
+
 const CONFIG_FILE = "config.json";
 
 const DEFAULTS = {
@@ -28,13 +29,6 @@ const DEFAULTS = {
 	pool_east: "",
 	pool_south: "",
 };
-
-async function getBinary() {
-	const os = await platform();
-	if (os == "win32") return "rat_tracker.exe";
-	if (os == "darwin") return "rat_tracker";
-	return "main.bin";
-}
 
 async function loadConfig() {
 	return { ...DEFAULTS }; // TODO: FIX READING THE CONFIG FILE!!!! MAYBE EVEN LOCALSTORAGE!!
@@ -132,7 +126,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 	let selectedFile = null;
 	let pythonProcess = null;
 	let cfg = await loadConfig();
-	const pythonBinary = await getBinary();
 
 	populateForm(cfg);
 	showPhase("before");
@@ -192,7 +185,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 		document.getElementById("frameText").textContent = "";
 
 		const args = buildArgs(selectedFile, cfg);
-		pythonProcess = new Command(pythonBinary, args);
+
+		pythonProcess = Command.sidecar("main", args);
 
 		let duringStarted = false;
 

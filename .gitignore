@@ -39,3 +39,4 @@ main.onefile-build/
 main.exe
 main
 main.bin
+src-tauri/bin/

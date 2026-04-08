@@ -7,10 +7,15 @@
 		"dialog:default",
 		"fs:allow-appconfig-read",
 		"fs:allow-appconfig-write",
-        "fs:allow-exists",
+		"fs:allow-exists",
 		{
-			"identifier": "fs:allow-exists",
-			"allow": [{ "path": "$APPCONFIG/*" }]
+			"identifier": "shell:allow-spawn",
+			"allow": [
+				{
+					"name": "main",
+					"sidecar": true
+				}
+			]
 		}
 	]
 }

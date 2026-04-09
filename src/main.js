@@ -54,7 +54,7 @@ function populateForm(cfg) {
 	for (const [key, value] of Object.entries(cfg)) {
 		const input = form.elements[key];
 		if (!input) continue;
-		if (input.type === "checkbox") input.checked = !!value;
+		if (input.type == "checkbox") input.checked = !!value;
 		else input.value = value ?? "";
 	}
 }
@@ -64,8 +64,8 @@ function readForm() {
 	const cfg = {};
 	for (const el of form.elements) {
 		if (!el.name) continue;
-		if (el.type === "checkbox") cfg[el.name] = el.checked;
-		else if (el.type === "number") cfg[el.name] = el.value === "" ? null : Number(el.value);
+		if (el.type == "checkbox") cfg[el.name] = el.checked;
+		else if (el.type == "number") cfg[el.name] = el.value == "" ? null : Number(el.value);
 		else cfg[el.name] = el.value;
 	}
 	return cfg;
@@ -75,10 +75,10 @@ function buildArgs(selectedFile, cfg) {
 	const args = ["--video", selectedFile];
 
 	const startVal = document.getElementById("startTime").value;
-	if (startVal !== "") args.push("--start", startVal);
+	if (startVal != "") args.push("--start", startVal);
 
 	const endVal = document.getElementById("endTime").value;
-	if (endVal !== "") args.push("--end", endVal);
+	if (endVal != "") args.push("--end", endVal);
 
 	args.push("--pool_radius_cm", document.getElementById("poolRadius").value);
 	args.push("--mog2_history", String(cfg.mog2_history));
@@ -186,7 +186,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 		const args = buildArgs(selectedFile, cfg);
 
-		pythonProcess = Command.sidecar("main", args);
+		pythonProcess = Command.sidecar("bin/main", args);
 
 		let duringStarted = false;
 
@@ -198,7 +198,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 				return;
 			}
 
-			if (parsed.progress !== undefined) {
+			if (parsed.progress != undefined) {
 				if (!duringStarted) {
 					duringStarted = true;
 					showPhase("during");

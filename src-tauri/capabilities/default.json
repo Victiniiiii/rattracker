@@ -12,7 +12,7 @@
 			"identifier": "shell:allow-spawn",
 			"allow": [
 				{
-					"name": "main",
+					"name": "bin/main",
 					"sidecar": true
 				}
 			]

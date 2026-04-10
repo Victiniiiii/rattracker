@@ -13,7 +13,8 @@
 			"allow": [
 				{
 					"name": "bin/main",
-					"sidecar": true
+					"sidecar": true,
+                    "args": true
 				}
 			]
 		}

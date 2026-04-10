@@ -16,10 +16,10 @@ QUADRANT_COLORS = {
 }
 
 CALIB_STEPS = [
-    ("WEST",  "Click on the WEST point of the pool edge"),
-    ("NORTH", "Click on the NORTH point of the pool edge"),
-    ("EAST",  "Click on the EAST point of the pool edge"),
-    ("SOUTH", "Click on the SOUTH point of the pool edge"),
+    ("WEST",  "west"),
+    ("NORTH", "north"),
+    ("EAST",  "east"),
+    ("SOUTH", "south"),
 ]
 CALIB_COLORS = {
     "WEST":  (255, 140, 0),
@@ -28,35 +28,173 @@ CALIB_COLORS = {
     "SOUTH": (238, 58, 140),
 }
 
+STRINGS = {
+    "en": {
+        "calib_step":       "Step {step}/4 -- Click on the {cardinal} point of the pool edge",
+        "calib_redo":       "Press  R  to redo all points   |   ESC to abort",
+        "calib_confirm":    "All 4 points set -- press ENTER to confirm or R to redo",
+        "calib_abort":      "Press  ESC  to abort without saving",
+        "confirm_title":    "Saved pool coordinates found -- confirm or repick?",
+        "confirm_hint":     "ENTER  -->  Continue with these coordinates     ESC  -->  Repick",
+        "status_detected":  "DETECTED",
+        "status_missing":   "MISSING",
+        "hud_frame":        "Frame: {frame}   t = {time:.2f}s",
+        "hud_position":     "Position: {pos}",
+        "hud_dist":         "Dist: {dist}",
+        "leaderboard_title":"QUADRANT LEADERBOARD",
+        "cardinal_west":    "WEST",
+        "cardinal_north":   "NORTH",
+        "cardinal_east":    "EAST",
+        "cardinal_south":   "SOUTH",
+        "summary_video":    "Video           : {v}",
+        "summary_res":      "Resolution      : {w}x{h}",
+        "summary_frames":   "Total frames    : {n}",
+        "summary_fps":      "FPS             : {fps:.2f}",
+        "summary_duration": "Duration (s)    : {d:.2f}",
+        "summary_detected": "Detected frames : {n}",
+        "summary_interp":   "Interpolated    : {n}",
+        "summary_missing":  "Missing (no pos): {n}",
+        "summary_radius":   "Pool radius     : {r} cm",
+        "summary_scale_x":  "Scale X         : {s:.4f} cm/px  (horizontal)",
+        "summary_scale_y":  "Scale Y         : {s:.4f} cm/px  (vertical)",
+        "summary_dist_px":  "Total distance  : {d:.2f} px",
+        "summary_dist_cm":  "Total distance  : {d:.2f} cm",
+        "summary_pairs":    "  (over {n} consecutive frame pairs)",
+        "summary_quad_hdr": "-- Quadrant Analysis (sorted by time spent) --",
+        "summary_col_q":    "Quadrant",
+        "summary_col_t":    "Time (s)",
+        "summary_col_tp":   "Time (%)",
+        "summary_col_d":    "Dist (cm)",
+        "summary_col_dp":   "Dist (%)",
+        "summary_total":    "TOTAL",
+    },
+    "fr": {
+        "calib_step":       "Étape {step}/4 -- Cliquez sur le point {cardinal} du bord du bassin",
+        "calib_redo":       "Appuyez sur  R  pour recommencer   |   ESC pour abandonner",
+        "calib_confirm":    "4 points définis -- ENTRÉE pour confirmer ou R pour recommencer",
+        "calib_abort":      "ESC  pour abandonner sans sauvegarder",
+        "confirm_title":    "Coordonnées du bassin trouvées -- confirmer ou reprendre ?",
+        "confirm_hint":     "ENTRÉE  -->  Continuer avec ces coordonnées     ESC  -->  Reprendre",
+        "status_detected":  "DÉTECTÉ",
+        "status_missing":   "MANQUANT",
+        "hud_frame":        "Image: {frame}   t = {time:.2f}s",
+        "hud_position":     "Position: {pos}",
+        "hud_dist":         "Dist: {dist}",
+        "leaderboard_title":"CLASSEMENT QUADRANTS",
+        "cardinal_west":    "OUEST",
+        "cardinal_north":   "NORD",
+        "cardinal_east":    "EST",
+        "cardinal_south":   "SUD",
+        "summary_video":    "Vidéo           : {v}",
+        "summary_res":      "Résolution      : {w}x{h}",
+        "summary_frames":   "Images totales  : {n}",
+        "summary_fps":      "FPS             : {fps:.2f}",
+        "summary_duration": "Durée (s)       : {d:.2f}",
+        "summary_detected": "Images détectées: {n}",
+        "summary_interp":   "Interpolées     : {n}",
+        "summary_missing":  "Manquantes      : {n}",
+        "summary_radius":   "Rayon bassin    : {r} cm",
+        "summary_scale_x":  "Échelle X       : {s:.4f} cm/px  (horizontal)",
+        "summary_scale_y":  "Échelle Y       : {s:.4f} cm/px  (vertical)",
+        "summary_dist_px":  "Distance totale : {d:.2f} px",
+        "summary_dist_cm":  "Distance totale : {d:.2f} cm",
+        "summary_pairs":    "  (sur {n} paires d'images consécutives)",
+        "summary_quad_hdr": "-- Analyse par quadrant (triée par temps passé) --",
+        "summary_col_q":    "Quadrant",
+        "summary_col_t":    "Temps (s)",
+        "summary_col_tp":   "Temps (%)",
+        "summary_col_d":    "Dist (cm)",
+        "summary_col_dp":   "Dist (%)",
+        "summary_total":    "TOTAL",
+    },
+    "tr": {
+        "calib_step":       "Adım {step}/4 -- Havuz kenarındaki {cardinal} noktasına tıklayın",
+        "calib_redo":       "R  tüm noktaları sıfırlar   |   ESC iptal eder",
+        "calib_confirm":    "4 nokta belirlendi -- ENTER ile onayla veya R ile yeniden yap",
+        "calib_abort":      "ESC  kaydetmeden çık",
+        "confirm_title":    "Kayıtlı havuz koordinatları bulundu -- onayla veya yeniden seç?",
+        "confirm_hint":     "ENTER  -->  Bu koordinatlarla devam et     ESC  -->  Yeniden seç",
+        "status_detected":  "ALGILANDI",
+        "status_missing":   "KAYIP",
+        "hud_frame":        "Kare: {frame}   t = {time:.2f}s",
+        "hud_position":     "Konum: {pos}",
+        "hud_dist":         "Dist: {dist}",
+        "leaderboard_title":"ÇEYREK SIRALAMASI",
+        "cardinal_west":    "BATI",
+        "cardinal_north":   "KUZEY",
+        "cardinal_east":    "DOĞU",
+        "cardinal_south":   "GÜNEY",
+        "summary_video":    "Video           : {v}",
+        "summary_res":      "Çözünürlük      : {w}x{h}",
+        "summary_frames":   "Toplam kare     : {n}",
+        "summary_fps":      "FPS             : {fps:.2f}",
+        "summary_duration": "Süre (s)        : {d:.2f}",
+        "summary_detected": "Algılanan kare  : {n}",
+        "summary_interp":   "Enterpolasyon   : {n}",
+        "summary_missing":  "Eksik (konum yok): {n}",
+        "summary_radius":   "Havuz yarıçapı  : {r} cm",
+        "summary_scale_x":  "Ölçek X         : {s:.4f} cm/px  (yatay)",
+        "summary_scale_y":  "Ölçek Y         : {s:.4f} cm/px  (dikey)",
+        "summary_dist_px":  "Toplam mesafe   : {d:.2f} px",
+        "summary_dist_cm":  "Toplam mesafe   : {d:.2f} cm",
+        "summary_pairs":    "  ({n} ardışık kare çifti üzerinden)",
+        "summary_quad_hdr": "-- Çeyrek Analizi (harcanan zamana göre sıralanmış) --",
+        "summary_col_q":    "Çeyrek",
+        "summary_col_t":    "Süre (s)",
+        "summary_col_tp":   "Süre (%)",
+        "summary_col_d":    "Dist (cm)",
+        "summary_col_dp":   "Dist (%)",
+        "summary_total":    "TOPLAM",
+    },
+}
+
+def S(lang, key, **kwargs):
+    base = STRINGS.get(lang, STRINGS["en"])
+    s = base.get(key, STRINGS["en"].get(key, key))
+    return s.format(**kwargs) if kwargs else s
+
 ## Calibration
 
 def pool_coords_valid(cfg: dict) -> bool:
     return all(cfg.get(k) is not None
                for k in ("pool_west", "pool_north", "pool_east", "pool_south"))
 
-def run_calibration(frame: np.ndarray) -> dict | None:
+def run_calibration(frame: np.ndarray, lang: str) -> dict | None:
     state = {"step": 0, "points": {}, "frame": frame.copy()}
     window = "Pool Calibration"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(window, min(frame.shape[1], 1280), min(frame.shape[0], 720))
+
+    calib_cardinal_labels = {
+        "WEST":  S(lang, "cardinal_west"),
+        "NORTH": S(lang, "cardinal_north"),
+        "EAST":  S(lang, "cardinal_east"),
+        "SOUTH": S(lang, "cardinal_south"),
+    }
 
     def draw(base):
         img = base.copy()
         draw_transparent_banner(img, 0, 0, frame.shape[1], 70)
         step = state["step"]
         if step < len(CALIB_STEPS):
-            cardinal, instruction = CALIB_STEPS[step]
+            cardinal, _ = CALIB_STEPS[step]
             color = CALIB_COLORS[cardinal]
-            cv2.putText(img, f"Step {step + 1}/4 -- {instruction}", (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, color, 1)
-            cv2.putText(img, "Press  R  to redo all points   |   ESC to abort", (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
+            label = calib_cardinal_labels[cardinal]
+            cv2.putText(img, S(lang, "calib_step", step=step+1, cardinal=label),
+                        (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, color, 1)
+            cv2.putText(img, S(lang, "calib_redo"),
+                        (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
         else:
-            cv2.putText(img, "All 4 points set -- press ENTER to confirm or R to redo", (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (100, 255, 180), 1)
-            cv2.putText(img, "Press  ESC  to abort without saving", (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
+            cv2.putText(img, S(lang, "calib_confirm"),
+                        (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (100, 255, 180), 1)
+            cv2.putText(img, S(lang, "calib_abort"),
+                        (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
         for cardinal, pt in state["points"].items():
             col = CALIB_COLORS[cardinal]
             cv2.circle(img, pt, 7, col, -1)
             cv2.circle(img, pt, 9, (255, 255, 255), 1)
-            cv2.putText(img, cardinal, (pt[0] + 11, pt[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
+            cv2.putText(img, calib_cardinal_labels[cardinal],
+                        (pt[0] + 11, pt[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
         if len(state["points"]) == 4:
             p = state["points"]
             result = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
@@ -104,12 +242,18 @@ def run_calibration(frame: np.ndarray) -> dict | None:
     cv2.destroyWindow(window)
     return result
 
-def confirm_pool_from_args(frame, cfg):
+def confirm_pool_from_args(frame, cfg, lang):
     p = {
         "WEST":  cfg["pool_west"],
         "NORTH": cfg["pool_north"],
         "EAST":  cfg["pool_east"],
         "SOUTH": cfg["pool_south"],
+    }
+    calib_cardinal_labels = {
+        "WEST":  S(lang, "cardinal_west"),
+        "NORTH": S(lang, "cardinal_north"),
+        "EAST":  S(lang, "cardinal_east"),
+        "SOUTH": S(lang, "cardinal_south"),
     }
     result = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
     if result is None:
@@ -125,10 +269,13 @@ def confirm_pool_from_args(frame, cfg):
         col = CALIB_COLORS[cardinal]
         cv2.circle(img, pt, 7, col, -1)
         cv2.circle(img, pt, 9, (255, 255, 255), 1)
-        cv2.putText(img, cardinal, (pt[0] + 11, pt[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
+        cv2.putText(img, calib_cardinal_labels[cardinal],
+                    (pt[0] + 11, pt[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
     draw_transparent_banner(img, 0, 0, frame.shape[1], 70)
-    cv2.putText(img, "Saved pool coordinates found -- confirm or repick?", (12, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (100, 255, 180), 1)
-    cv2.putText(img, "ENTER  -->  Continue with these coordinates     ESC  -->  Repick", (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (180, 180, 180), 1)
+    cv2.putText(img, S(lang, "confirm_title"),
+                (12, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (100, 255, 180), 1)
+    cv2.putText(img, S(lang, "confirm_hint"),
+                (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (180, 180, 180), 1)
     window = "Pool Confirmation"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(window, min(frame.shape[1], 1280), min(frame.shape[0], 720))
@@ -293,7 +440,7 @@ def draw_transparent_banner(img, x0, y0, x1, y1, alpha=0.72):
     cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0, img)
     cv2.rectangle(img, (x0, y0), (x1, y1), (80, 80, 80), 1)
 
-def draw_leaderboard(img, stats, total_time_s, total_dist_cm):
+def draw_leaderboard(img, stats, total_time_s, total_dist_cm, lang):
     sorted_q = ["NW", "NE", "SW", "SE"]
     panel_w  = 310
     row_h    = 22
@@ -309,7 +456,8 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm):
     cv2.rectangle(overlay, (x0, y0), (x1, y1), (10, 10, 10), -1)
     cv2.addWeighted(overlay, 0.72, img, 0.28, 0, img)
     cv2.rectangle(img, (x0, y0), (x1, y1), (80, 80, 80), 1)
-    cv2.putText(img, "QUADRANT LEADERBOARD", (x0 + pad, y0 + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.44, (200, 200, 200), 1)
+    cv2.putText(img, S(lang, "leaderboard_title"),
+                (x0 + pad, y0 + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.44, (200, 200, 200), 1)
     for rank, q in enumerate(sorted_q):
         t_s   = stats[q]["time_s"]
         d_cm  = stats[q]["dist_cm"]
@@ -391,8 +539,9 @@ def parse_point(s):
 def main():
     parser = argparse.ArgumentParser(description="Track a rat in a water maze video.")
     parser.add_argument("--video",               required=True,  type=str)
-    parser.add_argument("--start",               default=None,   type=float,  help="Start time in seconds")
-    parser.add_argument("--end",                 default=None,   type=float,  help="End time in seconds")
+    parser.add_argument("--language",            default="en",   type=str,    choices=["en", "fr", "tr"])
+    parser.add_argument("--start",               default=None,   type=float)
+    parser.add_argument("--end",                 default=None,   type=float)
     parser.add_argument("--pool_radius_cm",      default=60,     type=float)
     parser.add_argument("--mog2_history",        default=120,    type=int)
     parser.add_argument("--mog2_threshold",      default=40,     type=float)
@@ -403,11 +552,13 @@ def main():
     parser.add_argument("--max_contour_area",    default=12000,  type=float)
     parser.add_argument("--trail_len",           default=40,     type=int)
     parser.add_argument("--debug_frames",        default=0,      type=int)
-    parser.add_argument("--pool_west",           default=None,   type=str,    help="x,y")
-    parser.add_argument("--pool_north",          default=None,   type=str,    help="x,y")
-    parser.add_argument("--pool_east",           default=None,   type=str,    help="x,y")
-    parser.add_argument("--pool_south",          default=None,   type=str,    help="x,y")
+    parser.add_argument("--pool_west",           default=None,   type=str)
+    parser.add_argument("--pool_north",          default=None,   type=str)
+    parser.add_argument("--pool_east",           default=None,   type=str)
+    parser.add_argument("--pool_south",          default=None,   type=str)
     args = parser.parse_args()
+
+    lang = args.language
 
     cfg = {
         "pool_radius_cm":     args.pool_radius_cm,
@@ -447,14 +598,14 @@ def main():
         raise RuntimeError("Could not read first frame from video.")
 
     if pool_coords_valid(cfg):
-        confirmed = confirm_pool_from_args(first_frame, cfg)
+        confirmed = confirm_pool_from_args(first_frame, cfg, lang)
         if not confirmed:
-            result = run_calibration(first_frame)
+            result = run_calibration(first_frame, lang)
             if result is None:
                 raise RuntimeError("Pool calibration aborted.")
             cfg.update(result)
     else:
-        result = run_calibration(first_frame)
+        result = run_calibration(first_frame, lang)
         if result is None:
             raise RuntimeError("Pool calibration aborted.")
         cfg.update(result)
@@ -501,6 +652,13 @@ def main():
     loop_start      = time.time()
 
     processable_frames = end_frame - start_frame
+
+    calib_labels = {
+        "WEST":  S(lang, "cardinal_west"),
+        "NORTH": S(lang, "cardinal_north"),
+        "EAST":  S(lang, "cardinal_east"),
+        "SOUTH": S(lang, "cardinal_south"),
+    }
 
     while True:
         current_pos = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
@@ -572,19 +730,23 @@ def main():
             cv2.circle(annotated, pos, 8,  (0, 0, 255), -1)
             cv2.circle(annotated, pos, 10, (255, 255, 255), 1)
 
-        status    = "DETECTED" if pos else "MISSING"
+        status    = S(lang, "status_detected") if pos else S(lang, "status_missing")
         hud_color = (0, 210, 0) if pos else (0, 0, 210)
         pos_str   = f"({pos[0]}, {pos[1]})" if pos else "n/a"
         hud_dist  = f"{running_dist_px:.1f} px  |  {running_dist_cm:.1f} cm"
         draw_transparent_banner(annotated, 5, 5, 340, 100)
-        cv2.putText(annotated, f"Frame: {frame_idx:>4}   t = {timestamp:.2f}s", (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1)
-        cv2.putText(annotated, f"Position: {pos_str}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1)
-        cv2.putText(annotated, status, (10, 72), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hud_color, 1)
-        cv2.putText(annotated, f"Dist: {hud_dist}", (10, 95), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 200, 50), 1)
+        cv2.putText(annotated, S(lang, "hud_frame", frame=frame_idx, time=timestamp),
+                    (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1)
+        cv2.putText(annotated, S(lang, "hud_position", pos=pos_str),
+                    (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1)
+        cv2.putText(annotated, status,
+                    (10, 72), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hud_color, 1)
+        cv2.putText(annotated, S(lang, "hud_dist", dist=hud_dist),
+                    (10, 95), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 200, 50), 1)
 
         total_q_time = sum(v["time_s"]  for v in q_stats.values())
         total_q_dist = sum(v["dist_cm"] for v in q_stats.values())
-        draw_leaderboard(annotated, q_stats, total_q_time, total_q_dist)
+        draw_leaderboard(annotated, q_stats, total_q_time, total_q_dist, lang)
 
         writer.write(annotated)
         frame_idx += 1
@@ -639,27 +801,32 @@ def main():
     sorted_q     = sorted(QUADRANT_NAMES, key=lambda q: q_stats_final[q]["time_s"], reverse=True)
     summary_path = output_dir / f"{video_path.stem}_summary.txt"
     with open(summary_path, "w", encoding="utf-8") as f:
+        col_q  = S(lang, "summary_col_q")
+        col_t  = S(lang, "summary_col_t")
+        col_tp = S(lang, "summary_col_tp")
+        col_d  = S(lang, "summary_col_d")
+        col_dp = S(lang, "summary_col_dp")
         lines = [
-            f"Video           : {video_path.name}",
-            f"Resolution      : {frame_w}x{frame_h}",
-            f"Total frames    : {frame_idx}",
-            f"FPS             : {fps:.2f}",
-            f"Duration (s)    : {frame_idx / fps:.2f}",
-            f"",
-            f"Detected frames : {detected}",
-            f"Interpolated    : {sum(1 for r in records if r['interpolated'])}",
-            f"Missing (no pos): {missing_after}",
-            f"",
-            f"Pool radius     : {cfg['pool_radius_cm']} cm",
-            f"Scale X         : {scale_x:.4f} cm/px  (horizontal)",
-            f"Scale Y         : {scale_y:.4f} cm/px  (vertical)",
-            f"",
-            f"Total distance  : {total_dist_px:.2f} px",
-            f"Total distance  : {total_dist_cm:.2f} cm",
-            f"  (over {valid_pairs} consecutive frame pairs)",
-            f"",
-            f"-- Quadrant Analysis (sorted by time spent) --",
-            f"{'Quadrant':<10} {'Time (s)':>10} {'Time (%)':>10} {'Dist (cm)':>12} {'Dist (%)':>10}",
+            S(lang, "summary_video",    v=video_path.name),
+            S(lang, "summary_res",      w=frame_w, h=frame_h),
+            S(lang, "summary_frames",   n=frame_idx),
+            S(lang, "summary_fps",      fps=fps),
+            S(lang, "summary_duration", d=frame_idx / fps),
+            "",
+            S(lang, "summary_detected", n=detected),
+            S(lang, "summary_interp",   n=sum(1 for r in records if r['interpolated'])),
+            S(lang, "summary_missing",  n=missing_after),
+            "",
+            S(lang, "summary_radius",   r=cfg['pool_radius_cm']),
+            S(lang, "summary_scale_x",  s=scale_x),
+            S(lang, "summary_scale_y",  s=scale_y),
+            "",
+            S(lang, "summary_dist_px",  d=total_dist_px),
+            S(lang, "summary_dist_cm",  d=total_dist_cm),
+            S(lang, "summary_pairs",    n=valid_pairs),
+            "",
+            S(lang, "summary_quad_hdr"),
+            f"{col_q:<10} {col_t:>10} {col_tp:>10} {col_d:>12} {col_dp:>10}",
             f"{'-'*56}",
         ]
         for q in sorted_q:
@@ -668,9 +835,10 @@ def main():
             t_pct = (t_s  / total_q_time * 100) if total_q_time > 0 else 0.0
             d_pct = (d_cm / total_q_dist * 100) if total_q_dist > 0 else 0.0
             lines.append(f"{q:<10} {t_s:>10.2f} {t_pct:>9.1f}% {d_cm:>11.2f} {d_pct:>9.1f}%")
+        total_label = S(lang, "summary_total")
         lines += [
             f"{'-'*56}",
-            f"{'TOTAL':<10} {total_q_time:>10.2f} {'100.0':>9}% {total_q_dist:>11.2f} {'100.0':>9}%",
+            f"{total_label:<10} {total_q_time:>10.2f} {'100.0':>9}% {total_q_dist:>11.2f} {'100.0':>9}%",
         ]
         f.write("\n".join(lines))
 

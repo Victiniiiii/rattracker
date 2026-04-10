@@ -6,150 +6,97 @@
 		<link rel="stylesheet" href="styles.css" />
 	</head>
 	<body>
-		<h1>Rat Tracker</h1>
-
-		<div id="version-language-div">
-			<div id="language">
-				<img src="assets/uk.svg" alt="English" class="lang-flag" data-lang="en" />
-				<img src="assets/fr.svg" alt="French" class="lang-flag" data-lang="fr" />
-				<img src="assets/tr.svg" alt="Turkish" class="lang-flag" data-lang="tr" />
+		<div id="topBar">
+			<h1>Rat Tracker</h1>
+			<div id="topBarRight">
+				<div id="langDropdown" class="dropdown">
+					<button id="langBtn" class="dropdownToggle" onclick="toggleLangDropdown()">
+						<img id="langFlagSelected" src="assets/uk.svg" class="lang-flag" />
+						<span id="langNameSelected">English</span>
+						<svg class="chevron" viewBox="0 0 10 6" width="10" height="6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" /></svg>
+					</button>
+					<div id="langMenu" class="dropdownMenu" hidden>
+						<button class="langOption" data-lang="en" onclick="selectLang('en')"><img src="assets/uk.svg" class="lang-flag" /> English</button>
+						<button class="langOption" data-lang="fr" onclick="selectLang('fr')"><img src="assets/fr.svg" class="lang-flag" /> Français</button>
+						<button class="langOption" data-lang="tr" onclick="selectLang('tr')"><img src="assets/tr.svg" class="lang-flag" /> Türkçe</button>
+					</div>
+				</div>
+				<span id="version">v1.0.0</span>
+				<button id="settingsBtn" onclick="openSettings()">
+					<img width="18" height="18" src="assets/settings.svg" alt="Settings" />
+				</button>
 			</div>
-			<div id="version">Version: 1.0.0</div>
 		</div>
 
-		<button id="settings">
-			<img width="20px" height="20px" src="assets/settings.svg" alt="Settings" />
-		</button>
-
-		<div id="settingsPanel" hidden>
-			<form id="configForm">
-				<h2>Detection Settings</h2>
-
-				<label
-					>MOG2 History
-					<input type="number" name="mog2_history" min="1" value="120" />
-				</label>
-
-				<label
-					>MOG2 Threshold
-					<input type="number" name="mog2_threshold" min="1" value="40" />
-				</label>
-
-				<label
-					>Detect Shadows
-					<input type="checkbox" name="mog2_detect_shadow" />
-				</label>
-
-				<label
-					>Morph Open Kernel
-					<input type="number" name="morph_open_k" min="1" step="2" value="3" />
-				</label>
-
-				<label
-					>Morph Close Kernel
-					<input type="number" name="morph_close_k" min="1" step="2" value="15" />
-				</label>
-
-				<label
-					>Min Contour Area (px²)
-					<input type="number" name="min_contour_area" min="0" value="300" />
-				</label>
-
-				<label
-					>Max Contour Area (px²)
-					<input type="number" name="max_contour_area" min="0" value="12000" />
-				</label>
-
-				<label
-					>Trail Length (frames)
-					<input type="number" name="trail_len" min="1" value="40" />
-				</label>
-
-				<label
-					>Debug Frames
-					<input type="number" name="debug_frames" min="0" value="0" />
-				</label>
-
-				<h2>Pool Calibration Cache</h2>
-				<p id="calibNote">These are auto-filled after the first calibration. Edit to reuse across runs.</p>
-
-				<label
-					>Pool West (x,y)
-					<input type="text" name="pool_west" placeholder="e.g. 320,240" />
-				</label>
-				<label
-					>Pool North (x,y)
-					<input type="text" name="pool_north" placeholder="e.g. 640,120" />
-				</label>
-				<label
-					>Pool East (x,y)
-					<input type="text" name="pool_east" placeholder="e.g. 960,240" />
-				</label>
-				<label
-					>Pool South (x,y)
-					<input type="text" name="pool_south" placeholder="e.g. 640,360" />
-				</label>
-
-				<div id="settingsBtns">
-					<button type="submit">Save Settings</button>
-					<button type="button" id="closeSettings">Cancel</button>
+		<div id="settingsOverlay" hidden onclick="overlayClose(event)">
+			<div id="settingsPanel">
+				<div id="settingsHeader">
+					<h2 data-i18n="settings">Settings</h2>
+					<button class="iconBtn" onclick="closeSettings()">✕</button>
 				</div>
-			</form>
+				<form id="configForm" onsubmit="saveSettings(event)">
+					<h3 data-i18n="detection">Detection</h3>
+					<div class="formGrid">
+						<label data-i18n="mog2_history">MOG2 History<input type="number" name="mog2_history" min="1" value="120" /></label>
+						<label data-i18n="mog2_threshold">MOG2 Threshold<input type="number" name="mog2_threshold" min="1" value="40" /></label>
+						<label class="checkLabel" data-i18n="detect_shadows">Detect Shadows<input type="checkbox" name="mog2_detect_shadow" /></label>
+						<label data-i18n="morph_open">Morph Open Kernel<input type="number" name="morph_open_k" min="1" step="2" value="3" /></label>
+						<label data-i18n="morph_close">Morph Close Kernel<input type="number" name="morph_close_k" min="1" step="2" value="15" /></label>
+						<label data-i18n="min_area">Min Contour Area (px²)<input type="number" name="min_contour_area" min="0" value="300" /></label>
+						<label data-i18n="max_area">Max Contour Area (px²)<input type="number" name="max_contour_area" min="0" value="12000" /></label>
+						<label data-i18n="trail_len">Trail Length (frames)<input type="number" name="trail_len" min="1" value="40" /></label>
+						<label data-i18n="debug_frames">Debug Frames<input type="number" name="debug_frames" min="0" value="0" /></label>
+					</div>
+
+					<h3 data-i18n="pool_calib">Pool Calibration Cache</h3>
+					<p class="note" data-i18n="pool_note">Auto-filled after first calibration. Edit to reuse across runs.</p>
+					<div class="formGrid">
+						<label data-i18n="pool_west">Pool West (x,y)<input type="text" name="pool_west" placeholder="e.g. 320,240" /></label>
+						<label data-i18n="pool_north">Pool North (x,y)<input type="text" name="pool_north" placeholder="e.g. 640,120" /></label>
+						<label data-i18n="pool_east">Pool East (x,y)<input type="text" name="pool_east" placeholder="e.g. 960,240" /></label>
+						<label data-i18n="pool_south">Pool South (x,y)<input type="text" name="pool_south" placeholder="e.g. 640,360" /></label>
+					</div>
+
+					<div id="settingsBtns">
+						<button type="submit" class="primaryBtn" data-i18n="save">Save</button>
+						<button type="button" onclick="closeSettings()" data-i18n="cancel">Cancel</button>
+					</div>
+				</form>
+			</div>
 		</div>
 
-		<div id="mainDiv">
-			<div id="beforeScript">
-				<button id="selectFile">Select Video</button>
-				<p id="filePath">No file selected</p>
-
-				<label
-					>Start Time (seconds)
-					<input type="number" id="startTime" min="0" step="0.1" placeholder="Default: beginning" />
-				</label>
-
-				<label
-					>End Time (seconds)
-					<input type="number" id="endTime" min="0" step="0.1" placeholder="Default: end" />
-				</label>
-
-				<label
-					>Pool Radius (cm)
-					<input type="number" id="poolRadius" min="1" value="60" step="0.5" />
-				</label>
-
-				<button id="runBtn" disabled>Run</button>
+		<div id="appBody">
+			<div id="row1">
+				<button id="selectFileBtn" onclick="selectFile()" data-i18n="select_video">Select Video</button>
+				<span id="filePath" data-i18n-placeholder="no_file">No file selected</span>
+				<label class="inlineLabel" data-i18n="start_time">Start (s)<input type="number" id="startTime" min="0" step="0.1" /></label>
+				<label class="inlineLabel" data-i18n="end_time">End (s)<input type="number" id="endTime" min="0" step="0.1" /></label>
+				<label class="inlineLabel" data-i18n="pool_radius">Radius (cm)<input type="number" id="poolRadius" min="1" value="60" step="0.5" /></label>
 			</div>
 
-			<div id="duringScript" hidden>
-				<div id="progressInfo">
-					<span id="progressText">0%</span>
-					<span id="etaText"></span>
-					<span id="frameText"></span>
-				</div>
+			<div id="row2">
+				<button id="runBtn" class="primaryBtn" disabled onclick="runScript()" data-i18n="run">Run</button>
+				<button id="cancelBtn" disabled onclick="cancelScript()" data-i18n="cancel">Cancel</button>
+				<span id="progressText">—</span>
 				<progress id="progressBar" value="0" max="100"></progress>
-				<button id="cancelBtn">Cancel</button>
+				<span id="etaText"></span>
+				<div id="outputTabs">
+					<button class="tab active" data-tab="video" onclick="switchTab(this)" data-i18n="tab_video">Video</button>
+					<button class="tab" data-tab="csv" onclick="switchTab(this)" data-i18n="tab_csv">CSV</button>
+					<button class="tab" data-tab="summary" onclick="switchTab(this)" data-i18n="tab_summary">Summary</button>
+				</div>
 			</div>
 
-			<div id="afterScript" hidden>
-				<div id="outputTabs">
-					<button class="tab active" data-tab="video">Video</button>
-					<button class="tab" data-tab="csv">CSV</button>
-					<button class="tab" data-tab="summary">Summary</button>
-				</div>
-
+			<div id="outputArea">
 				<div id="tabVideo" class="tabContent">
 					<video id="outputVideo" controls></video>
 				</div>
-
 				<div id="tabCsv" class="tabContent" hidden>
 					<div id="csvTable"></div>
 				</div>
-
 				<div id="tabSummary" class="tabContent" hidden>
 					<pre id="summaryText"></pre>
 				</div>
-
-				<button id="runAgainBtn">Run Again</button>
 			</div>
 		</div>
 

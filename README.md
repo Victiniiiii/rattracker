@@ -52,3 +52,16 @@ sudo dnf install patchelf
 sudo yum install patchelf
 sudo pacman -S patchelf
 Unknown package manager. Install patchelf manually.
+
+sudo apt install \
+    libglib2.0-dev \
+    libgtk-3-dev \
+    libwebkit2gtk-4.1-dev \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    libayatana-appindicator3-dev \
+    librsvg2-dev \
+    libxdo-dev
+
+sudo apt install python3.12-dev

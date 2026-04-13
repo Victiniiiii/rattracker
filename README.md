@@ -59,7 +59,7 @@ npm i && npm run tauri dev
 ## Compile Python using Nuitka
 
 ```
-python -m nuitka --standalone --onefile --include-package=cv2 main.py
+python -m nuitka --standalone --onefile --include-package=cv2 main.py && mv main.bin src-tauri/bin/main-x86_64-unknown-linux-gnu
 ```
 
 ## Run auto-compiler scripts

@@ -68,6 +68,11 @@ STRINGS = {
         "summary_col_d":    "Dist (cm)",
         "summary_col_dp":   "Dist (%)",
         "summary_total":    "TOTAL",
+        "summary_pool_hdr": "-- Pool Calibration Points --",
+        "summary_pool_w":   "Pool West       : {v}",
+        "summary_pool_n":   "Pool North      : {v}",
+        "summary_pool_e":   "Pool East       : {v}",
+        "summary_pool_s":   "Pool South      : {v}",
     },
     "fr": {
         "calib_step":       "Étape {step}/4 -- Cliquez sur le point {cardinal} du bord du bassin",
@@ -107,6 +112,11 @@ STRINGS = {
         "summary_col_d":    "Dist (cm)",
         "summary_col_dp":   "Dist (%)",
         "summary_total":    "TOTAL",
+        "summary_pool_hdr": "-- Points de calibration du bassin --",
+        "summary_pool_w":   "Bassin Ouest    : {v}",
+        "summary_pool_n":   "Bassin Nord     : {v}",
+        "summary_pool_e":   "Bassin Est      : {v}",
+        "summary_pool_s":   "Bassin Sud      : {v}",
     },
     "tr": {
         "calib_step":       "Adım {step}/4 -- Havuz kenarındaki {cardinal} noktasına tıklayın",
@@ -146,6 +156,11 @@ STRINGS = {
         "summary_col_d":    "Dist (cm)",
         "summary_col_dp":   "Dist (%)",
         "summary_total":    "TOPLAM",
+        "summary_pool_hdr": "-- Havuz Kalibrasyon Noktaları --",
+        "summary_pool_w":   "Havuz Batı      : {v}",
+        "summary_pool_n":   "Havuz Kuzey     : {v}",
+        "summary_pool_e":   "Havuz Doğu      : {v}",
+        "summary_pool_s":   "Havuz Güney     : {v}",
     },
 }
 
@@ -153,6 +168,28 @@ def S(lang, key, **kwargs):
     base = STRINGS.get(lang, STRINGS["en"])
     s = base.get(key, STRINGS["en"].get(key, key))
     return s.format(**kwargs) if kwargs else s
+
+## Progress
+
+def emit_progress(frame_idx, processable_frames, loop_start, app_mode):
+    if processable_frames <= 0:
+        return
+    pct     = frame_idx / processable_frames
+    elapsed = time.time() - loop_start
+    eta     = int(elapsed / pct - elapsed) if pct > 0 else 0
+    if app_mode:
+        print(json.dumps({
+            "progress": round(pct * 100, 2),
+            "frame":    frame_idx,
+            "total":    processable_frames,
+            "eta":      eta,
+        }), flush=True)
+    else:
+        bar_width = 30
+        filled    = int(bar_width * pct)
+        bar       = "#" * filled + "-" * (bar_width - filled)
+        line      = f"\r[{bar}] {pct*100:5.1f}%  Frame {frame_idx}/{processable_frames}  ETA: {eta}s   "
+        print(line, end="", flush=True)
 
 ## Calibration
 
@@ -557,6 +594,7 @@ def main():
     parser.add_argument("--pool_north",          default=None,   type=str)
     parser.add_argument("--pool_east",           default=None,   type=str)
     parser.add_argument("--pool_south",          default=None,   type=str)
+    parser.add_argument("--appmode",             default=False,  action="store_true")
     args = parser.parse_args()
 
     lang = args.language
@@ -576,6 +614,7 @@ def main():
         "pool_north":         parse_point(args.pool_north) if args.pool_north else None,
         "pool_east":          parse_point(args.pool_east)  if args.pool_east  else None,
         "pool_south":         parse_point(args.pool_south) if args.pool_south else None,
+        "app_mode":           args.appmode,
     }
 
     video_path = Path(args.video)
@@ -632,11 +671,14 @@ def main():
     pool      = (cx, cy, rx, ry, angle)
     pool_mask = make_ellipse_mask((frame_h, frame_w), *pool)
 
-    output_dir = video_path.parent
-    timestamp_str = datetime.now().strftime("%y:%m:%d:%H:%M:%S")
-    video_out  = output_dir / (video_path.stem + f"_{timestamp_str}.mp4")
-    fourcc     = cv2.VideoWriter_fourcc(*"mp4v")
-    writer     = cv2.VideoWriter(str(video_out), fourcc, fps, (frame_w, frame_h))
+    ts           = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+    output_dir   = video_path.parent
+    video_out    = output_dir / f"{video_path.stem}_{ts}.mp4"
+    csv_path     = output_dir / f"{video_path.stem}_{ts}_coordinates.csv"
+    summary_path = output_dir / f"{video_path.stem}_{ts}_summary.txt"
+
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    writer = cv2.VideoWriter(str(video_out), fourcc, fps, (frame_w, frame_h))
 
     subtractor = cv2.createBackgroundSubtractorMOG2(
         history       = cfg["mog2_history"],
@@ -753,16 +795,10 @@ def main():
         writer.write(annotated)
         frame_idx += 1
 
-        if processable_frames > 0:
-            pct     = frame_idx / processable_frames
-            elapsed = time.time() - loop_start
-            eta     = (elapsed / pct - elapsed) if pct > 0 else 0
-            print(json.dumps({
-                "progress": round(pct * 100, 2),
-                "frame":    frame_idx,
-                "total":    processable_frames,
-                "eta":      int(eta),
-            }), flush=True)
+        emit_progress(frame_idx, processable_frames, loop_start, cfg["app_mode"])
+
+    if not cfg["app_mode"]:
+        print()  # newline to clean up the progress bar line
 
     cap.release()
     writer.release()
@@ -794,65 +830,74 @@ def main():
     total_q_time = sum(v["time_s"]  for v in q_stats_final.values())
     total_q_dist = sum(v["dist_cm"] for v in q_stats_final.values())
 
-    csv_path = output_dir / f"{video_path.stem}_coordinates.csv"
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer_csv = csv.DictWriter(f, fieldnames=["frame", "timestamp_s", "x", "y", "interpolated"])
         writer_csv.writeheader()
         writer_csv.writerows(records)
 
     sorted_q     = sorted(QUADRANT_NAMES, key=lambda q: q_stats_final[q]["time_s"], reverse=True)
-    summary_path = output_dir / f"{video_path.stem}_summary.txt"
+    col_q  = S(lang, "summary_col_q")
+    col_t  = S(lang, "summary_col_t")
+    col_tp = S(lang, "summary_col_tp")
+    col_d  = S(lang, "summary_col_d")
+    col_dp = S(lang, "summary_col_dp")
+    lines = [
+        S(lang, "summary_video",    v=video_path.name),
+        S(lang, "summary_res",      w=frame_w, h=frame_h),
+        S(lang, "summary_frames",   n=frame_idx),
+        S(lang, "summary_fps",      fps=fps),
+        S(lang, "summary_duration", d=frame_idx / fps),
+        "",
+        S(lang, "summary_pool_hdr"),
+        S(lang, "summary_pool_w",   v=cfg["pool_west"]),
+        S(lang, "summary_pool_n",   v=cfg["pool_north"]),
+        S(lang, "summary_pool_e",   v=cfg["pool_east"]),
+        S(lang, "summary_pool_s",   v=cfg["pool_south"]),
+        "",
+        S(lang, "summary_detected", n=detected),
+        S(lang, "summary_interp",   n=sum(1 for r in records if r['interpolated'])),
+        S(lang, "summary_missing",  n=missing_after),
+        "",
+        S(lang, "summary_radius",   r=cfg['pool_radius_cm']),
+        S(lang, "summary_scale_x",  s=scale_x),
+        S(lang, "summary_scale_y",  s=scale_y),
+        "",
+        S(lang, "summary_dist_px",  d=total_dist_px),
+        S(lang, "summary_dist_cm",  d=total_dist_cm),
+        S(lang, "summary_pairs",    n=valid_pairs),
+        "",
+        S(lang, "summary_quad_hdr"),
+        f"{col_q:<10} {col_t:>10} {col_tp:>10} {col_d:>12} {col_dp:>10}",
+        f"{'-'*56}",
+    ]
+    for q in sorted_q:
+        t_s   = q_stats_final[q]["time_s"]
+        d_cm  = q_stats_final[q]["dist_cm"]
+        t_pct = (t_s  / total_q_time * 100) if total_q_time > 0 else 0.0
+        d_pct = (d_cm / total_q_dist * 100) if total_q_dist > 0 else 0.0
+        lines.append(f"{q:<10} {t_s:>10.2f} {t_pct:>9.1f}% {d_cm:>11.2f} {d_pct:>9.1f}%")
+    total_label = S(lang, "summary_total")
+    lines += [
+        f"{'-'*56}",
+        f"{total_label:<10} {total_q_time:>10.2f} {'100.0':>9}% {total_q_dist:>11.2f} {'100.0':>9}%",
+    ]
+
     with open(summary_path, "w", encoding="utf-8") as f:
-        col_q  = S(lang, "summary_col_q")
-        col_t  = S(lang, "summary_col_t")
-        col_tp = S(lang, "summary_col_tp")
-        col_d  = S(lang, "summary_col_d")
-        col_dp = S(lang, "summary_col_dp")
-        lines = [
-            S(lang, "summary_video",    v=video_path.name),
-            S(lang, "summary_res",      w=frame_w, h=frame_h),
-            S(lang, "summary_frames",   n=frame_idx),
-            S(lang, "summary_fps",      fps=fps),
-            S(lang, "summary_duration", d=frame_idx / fps),
-            "",
-            S(lang, "summary_detected", n=detected),
-            S(lang, "summary_interp",   n=sum(1 for r in records if r['interpolated'])),
-            S(lang, "summary_missing",  n=missing_after),
-            "",
-            S(lang, "summary_radius",   r=cfg['pool_radius_cm']),
-            S(lang, "summary_scale_x",  s=scale_x),
-            S(lang, "summary_scale_y",  s=scale_y),
-            "",
-            S(lang, "summary_dist_px",  d=total_dist_px),
-            S(lang, "summary_dist_cm",  d=total_dist_cm),
-            S(lang, "summary_pairs",    n=valid_pairs),
-            "",
-            S(lang, "summary_quad_hdr"),
-            f"{col_q:<10} {col_t:>10} {col_tp:>10} {col_d:>12} {col_dp:>10}",
-            f"{'-'*56}",
-        ]
-        for q in sorted_q:
-            t_s   = q_stats_final[q]["time_s"]
-            d_cm  = q_stats_final[q]["dist_cm"]
-            t_pct = (t_s  / total_q_time * 100) if total_q_time > 0 else 0.0
-            d_pct = (d_cm / total_q_dist * 100) if total_q_dist > 0 else 0.0
-            lines.append(f"{q:<10} {t_s:>10.2f} {t_pct:>9.1f}% {d_cm:>11.2f} {d_pct:>9.1f}%")
-        total_label = S(lang, "summary_total")
-        lines += [
-            f"{'-'*56}",
-            f"{total_label:<10} {total_q_time:>10.2f} {'100.0':>9}% {total_q_dist:>11.2f} {'100.0':>9}%",
-        ]
         f.write("\n".join(lines))
 
-    print(json.dumps({
-        "done":          True,
-        "video_out":     str(video_out),
-        "csv_out":       str(csv_path),
-        "summary_out":   str(summary_path),
-        "total_dist_cm": round(total_dist_cm, 2),
-        "total_frames":  frame_idx,
-        "detected":      detected,
-    }), flush=True)
+    if not cfg["app_mode"]:
+        print("\n" + "\n".join(lines))
+
+    if cfg["app_mode"]:
+        print(json.dumps({
+            "done":          True,
+            "video_out":     str(video_out),
+            "csv_out":       str(csv_path),
+            "summary_out":   str(summary_path),
+            "total_dist_cm": round(total_dist_cm, 2),
+            "total_frames":  frame_idx,
+            "detected":      detected,
+        }), flush=True)
 
 if __name__ == "__main__":
     main()

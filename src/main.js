@@ -237,6 +237,7 @@ function buildArgs(filePath, c) {
 	if (c.pool_east) args.push("--pool_east", c.pool_east);
 	if (c.pool_south) args.push("--pool_south", c.pool_south);
 
+	args.push("--appmode");
 	return args;
 }
 
@@ -343,16 +344,29 @@ window.runScript = async function () {
 			saveConfig(cfg);
 
 			try {
-				document.getElementById("outputVideo").src = convertFileSrc(parsed.video_out);
-			} catch {}
+				const fileBytes = await tauri.fs.readFile(parsed.video_out);
+				const blob = new Blob([fileBytes], { type: "video/mp4" });
+				const blobUrl = URL.createObjectURL(blob);
+				const videoEl = document.getElementById("outputVideo");
+				videoEl.src = blobUrl;
+				videoEl.load();
+			} catch (e) {
+				console.error("Video load error:", e);
+			}
+
 			try {
 				const csvText = await readTextFile(parsed.csv_out);
 				renderCsvTable(csvText);
-			} catch {}
+			} catch (e) {
+				console.error("CSV load error:", e);
+			}
+
 			try {
 				const summaryText = await readTextFile(parsed.summary_out);
 				document.getElementById("summaryText").textContent = summaryText;
-			} catch {}
+			} catch (e) {
+				console.error("Summary load error:", e);
+			}
 
 			setUIRunning(false);
 		}

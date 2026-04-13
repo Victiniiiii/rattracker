@@ -9,12 +9,20 @@
 		"fs:allow-appconfig-write",
 		"fs:allow-exists",
 		{
+			"identifier": "fs:allow-read-text-file",
+			"allow": [{ "path": "**" }]
+		},
+		{
+			"identifier": "fs:allow-read-file",
+			"allow": [{ "path": "**" }]
+		},
+		{
 			"identifier": "shell:allow-spawn",
 			"allow": [
 				{
 					"name": "bin/main",
 					"sidecar": true,
-                    "args": true
+					"args": true
 				}
 			]
 		}

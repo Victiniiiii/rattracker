@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    rattracker_lib::run();
+    morriswatermazeanalysis_lib::run();
 }

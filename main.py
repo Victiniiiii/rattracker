@@ -5,6 +5,7 @@ import math
 import json
 import argparse
 import time
+from datetime import datetime
 from pathlib import Path
 
 QUADRANT_NAMES  = ["NE", "NW", "SW", "SE"]
@@ -632,7 +633,8 @@ def main():
     pool_mask = make_ellipse_mask((frame_h, frame_w), *pool)
 
     output_dir = video_path.parent
-    video_out  = output_dir / (video_path.stem + "_tracked.mp4")
+    timestamp_str = datetime.now().strftime("%y:%m:%d:%H:%M:%S")
+    video_out  = output_dir / (video_path.stem + f"_{timestamp_str}.mp4")
     fourcc     = cv2.VideoWriter_fourcc(*"mp4v")
     writer     = cv2.VideoWriter(str(video_out), fourcc, fps, (frame_w, frame_h))
 

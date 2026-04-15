@@ -1,4 +1,4 @@
-# Setup
+# Manual Setup
 
 ## All required packages (Linux/Ubuntu)
 

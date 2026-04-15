@@ -235,6 +235,37 @@ def S(lang, key, **kwargs):
     s = base.get(key, STRINGS["en"].get(key, key))
     return s.format(**kwargs) if kwargs else s
 
+
+def tracemap(records, first_frame, output_dir, video_path, ts):
+    canvas = first_frame.copy()
+    output_path = output_dir / f"{video_path.stem}_{ts}_tracemap.jpg"
+
+    prev_point = None
+
+    for r in records:
+        x = r.get("x")
+        y = r.get("y")
+
+        if x is None or y is None:
+            prev_point = None
+            continue
+
+        point = (int(x), int(y))
+
+        if prev_point is not None:
+            cv2.line(
+                canvas,
+                prev_point,
+                point,
+                (255, 255, 0),  # Aqua
+                2,
+                lineType=cv2.LINE_AA
+            )
+
+        prev_point = point
+
+    cv2.imwrite(str(output_path), canvas)
+
 ## Progress
 
 def emit_progress(frame_idx, processable_frames, loop_start, app_mode):
@@ -1251,6 +1282,8 @@ def main():
 
     with open(summary_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
+
+    tracemap(records, first_frame, output_dir, video_path, ts)
 
     if not cfg["app_mode"]:
         print("\n" + "\n".join(lines))

@@ -44,13 +44,38 @@ PLATFORM_COLORS = {
     "SW": (255, 200, 100),
 }
 
+NAMED_COLORS = {
+    "red":     (0,   0,   255),
+    "green":   (0,   255, 0),
+    "blue":    (255, 0,   0),
+    "yellow":  (0,   255, 255),
+    "cyan":    (255, 255, 0),
+    "magenta": (255, 0,   255),
+    "white":   (255, 255, 255),
+    "black":   (0,   0,   0),
+    "orange":  (0,   165, 255),
+    "purple":  (128, 0,   128),
+    "pink":    (147, 20,  255),
+    "lime":    (0,   255, 128),
+    "teal":    (128, 128, 0),
+    "navy":    (128, 0,   0),
+    "maroon":  (0,   0,   128),
+    "coral":   (80,  127, 255),
+    "salmon":  (114, 128, 250),
+    "gold":    (0,   215, 255),
+    "silver":  (192, 192, 192),
+    "indigo":  (130, 0,   75),
+}
+
 STRINGS = {
     "en": {
         "calib_step":           "Step {step}/4 -- Click on the {cardinal} point of the pool edge",
         "calib_redo":           "Press  R  to redo all points   |   ESC to abort",
         "calib_confirm":        "All 4 points set -- press ENTER to confirm or R to redo",
         "calib_abort":          "Press  ESC  to abort without saving",
-        "calib_post_confirm":   "ENTER  -->  Continue without platform     M  -->  Pick platform corners",
+        "calib_post_confirm":   "ENTER  -->  Confirm all 8 points",
+        "calib_pool_done":      "Pool done! Now click the {corner} platform corner (clockwise)",
+        "calib_all_done":       "All 8 points set -- press ENTER to confirm or R to redo all",
         "confirm_title":        "Saved pool coordinates found -- confirm or repick",
         "confirm_hint":         "ENTER  -->  Continue with these coordinates     ESC  -->  Repick",
         "platform_step":        "Platform Step {step}/4 -- Click the {corner} corner (clockwise)",
@@ -92,6 +117,7 @@ STRINGS = {
         "summary_col_tp":       "Time (%)",
         "summary_col_d":        "Dist (cm)",
         "summary_col_dp":       "Dist (%)",
+        "summary_col_exits":    "Exits",
         "summary_total":        "TOTAL",
         "summary_pool_hdr":     "-- Pool Calibration Points --",
         "summary_pool_w":       "Pool West       : {v}",
@@ -104,6 +130,8 @@ STRINGS = {
         "summary_platform_se":  "Platform SE     : {v}",
         "summary_platform_sw":  "Platform SW     : {v}",
         "summary_platform_exits":"Platform exits  : {n}",
+        "summary_quad_exits_hdr":"-- Quadrant Exits --",
+        "summary_quad_exit":    "{q} exits       : {n}",
         "summary_rerun":        "-- Re-run Command --",
     },
     "fr": {
@@ -111,7 +139,9 @@ STRINGS = {
         "calib_redo":           "Appuyez sur  R  pour recommencer   |   ESC pour abandonner",
         "calib_confirm":        "4 points definis -- ENTREE pour confirmer ou R pour recommencer",
         "calib_abort":          "ESC  pour abandonner sans sauvegarder",
-        "calib_post_confirm":   "ENTREE  -->  Continuer sans plateforme     M  -->  Choisir les coins de la plateforme",
+        "calib_post_confirm":   "ENTREE  -->  Confirmer les 8 points",
+        "calib_pool_done":      "Bassin OK! Cliquez le coin {corner} de la plateforme (sens horaire)",
+        "calib_all_done":       "8 points definis -- ENTREE pour confirmer ou R pour tout recommencer",
         "confirm_title":        "Coordonnees du bassin trouvees -- confirmer ou reprendre",
         "confirm_hint":         "ENTREE  -->  Continuer avec ces coordonnees     ESC  -->  Reprendre",
         "platform_step":        "Plateforme etape {step}/4 -- Cliquez le coin {corner} (sens horaire)",
@@ -153,6 +183,7 @@ STRINGS = {
         "summary_col_tp":       "Temps (%)",
         "summary_col_d":        "Dist (cm)",
         "summary_col_dp":       "Dist (%)",
+        "summary_col_exits":    "Sorties",
         "summary_total":        "TOTAL",
         "summary_pool_hdr":     "-- Points de calibration du bassin --",
         "summary_pool_w":       "Bassin Ouest    : {v}",
@@ -165,6 +196,8 @@ STRINGS = {
         "summary_platform_se":  "Plateforme SE   : {v}",
         "summary_platform_sw":  "Plateforme SO   : {v}",
         "summary_platform_exits":"Sorties plateau : {n}",
+        "summary_quad_exits_hdr":"-- Sorties par quadrant --",
+        "summary_quad_exit":    "Sorties {q}     : {n}",
         "summary_rerun":        "-- Commande de relance --",
     },
     "tr": {
@@ -172,7 +205,9 @@ STRINGS = {
         "calib_redo":           "R  tum noktalari sifirlar   |   ESC iptal eder",
         "calib_confirm":        "4 nokta belirlendi -- ENTER ile onayla veya R ile yeniden secim yap",
         "calib_abort":          "ESC -->  kaydetmeden cik",
-        "calib_post_confirm":   "ENTER  -->  Platform olmadan devam et     M  -->  Platform koselerini sec",
+        "calib_post_confirm":   "ENTER  -->  8 noktanin hepsini onayla",
+        "calib_pool_done":      "Havuz tamam! {corner} platform kosesine tiklayin (saat yonunde)",
+        "calib_all_done":       "8 nokta belirlendi -- ENTER ile onayla veya R ile bastan yap",
         "confirm_title":        "Kayitli havuz koordinatlari bulundu -- onayla veya yeniden sec",
         "confirm_hint":         "ENTER  -->  Bu koordinatlarla devam et     ESC  -->  Yeniden sec",
         "platform_step":        "Platform Adim {step}/4 -- {corner} kosesine tiklayin (saat yonunde)",
@@ -214,6 +249,7 @@ STRINGS = {
         "summary_col_tp":       "Sure (%)",
         "summary_col_d":        "Dist (cm)",
         "summary_col_dp":       "Dist (%)",
+        "summary_col_exits":    "Cikis",
         "summary_total":        "TOPLAM",
         "summary_pool_hdr":     "-- Havuz Kalibrasyon Noktalari --",
         "summary_pool_w":       "Havuz Bati      : {v}",
@@ -226,6 +262,8 @@ STRINGS = {
         "summary_platform_se":  "Platform GD     : {v}",
         "summary_platform_sw":  "Platform GB     : {v}",
         "summary_platform_exits":"Platform cikisi : {n}",
+        "summary_quad_exits_hdr":"-- Ceyrek Cikislari --",
+        "summary_quad_exit":    "{q} cikisi      : {n}",
         "summary_rerun":        "-- Yeniden calistirma Komutu --",
     },
 }
@@ -235,76 +273,66 @@ def S(lang, key, **kwargs):
     s = base.get(key, STRINGS["en"].get(key, key))
     return s.format(**kwargs) if kwargs else s
 
-def tracemap(records, first_frame, output_dir, video_path, ts, color=(255, 255, 0)):
+def parse_tracemap_color(value):
+    if value is None:
+        return (0, 255, 255)
+    v = value.strip().lower()
+    if v in NAMED_COLORS:
+        return NAMED_COLORS[v]
+    parts = v.split(",")
+    if len(parts) == 3:
+        try:
+            r, g, b = int(parts[0]), int(parts[1]), int(parts[2])
+            return (b, g, r)
+        except ValueError:
+            pass
+    raise argparse.ArgumentTypeError(
+        f"Invalid tracemapcolor '{value}'. Use R,G,B or a name: {', '.join(NAMED_COLORS)}"
+    )
+
+def tracemap(records, first_frame, output_dir, video_path, ts, color=(0, 255, 255)):
     canvas = first_frame.copy()
     output_path = output_dir / f"{video_path.stem}_{ts}_tracemap.jpg"
-
     prev_point = None
-
     for r in records:
         x = r.get("x")
         y = r.get("y")
-
         if x is None or y is None:
             prev_point = None
             continue
-
         point = (int(x), int(y))
-
         if prev_point is not None:
-            cv2.line(
-                canvas,
-                prev_point,
-                point,
-                color,  # Aqua
-                2,
-                lineType=cv2.LINE_AA
-            )
-
+            cv2.line(canvas, prev_point, point, color, 2, lineType=cv2.LINE_AA)
         prev_point = point
-
     cv2.imwrite(str(output_path), canvas)
 
 def heatmap(records, first_frame, output_dir, video_path, ts, sigma=20):
     h, w = first_frame.shape[:2]
-
     heat = np.zeros((h, w), dtype=np.float32)
-
     prev_time = None
-
     for r in records:
         x = r.get("x")
         y = r.get("y")
         t = r.get("timestamp_s")
-
         if x is None or y is None or t is None:
             prev_time = None
             continue
-
         x = int(x)
         y = int(y)
-
         if prev_time is not None:
             dt = t - prev_time
-
             if dt < 0 or dt > 1:
                 dt = 0
-
             if 0 <= x < w and 0 <= y < h:
                 heat[y, x] += dt
-
         prev_time = t
-
     heat = cv2.GaussianBlur(heat, (0, 0), sigmaX=sigma, sigmaY=sigma)
     heat_norm = cv2.normalize(heat, None, 0, 255, cv2.NORM_MINMAX)
     heat_uint8 = heat_norm.astype(np.uint8)
     heat_color = cv2.applyColorMap(heat_uint8, cv2.COLORMAP_JET)
     overlay = cv2.addWeighted(first_frame, 0.6, heat_color, 0.4, 0)
-
     output_path = output_dir / f"{video_path.stem}_{ts}_heatmap.jpg"
     cv2.imwrite(str(output_path), overlay)
-
-## Progress
 
 def emit_progress(frame_idx, processable_frames, loop_start, app_mode):
     if processable_frames <= 0:
@@ -326,8 +354,6 @@ def emit_progress(frame_idx, processable_frames, loop_start, app_mode):
         line      = f"\r[{bar}] {pct*100:5.1f}%  Frame {frame_idx}/{processable_frames}  ETA: {eta}s   "
         print(line, end="", flush=True)
 
-## Calibration
-
 def pool_coords_valid(cfg: dict) -> bool:
     return all(cfg.get(k) is not None
                for k in ("pool_west", "pool_north", "pool_east", "pool_south"))
@@ -336,9 +362,15 @@ def platform_coords_valid(cfg: dict) -> bool:
     return all(cfg.get(k) is not None
                for k in ("platform_nw", "platform_ne", "platform_se", "platform_sw"))
 
-def run_calibration(frame: np.ndarray, lang: str) -> dict | None:
-    state = {"step": 0, "points": {}, "frame": frame.copy()}
-    window = "Pool Calibration"
+def run_calibration(frame: np.ndarray, lang: str, require_platform: bool = False) -> dict | None:
+    state = {
+        "step": 0,
+        "pool_points": {},
+        "platform_points": {},
+        "phase": "pool",
+        "frame": frame.copy(),
+    }
+    window = "Calibration"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(window, min(frame.shape[1], 1280), min(frame.shape[0], 720))
 
@@ -349,31 +381,52 @@ def run_calibration(frame: np.ndarray, lang: str) -> dict | None:
         "SOUTH": S(lang, "cardinal_south"),
     }
 
+    total_steps = 8 if require_platform else 4
+
     def draw(base):
         img = base.copy()
         draw_transparent_banner(img, 0, 0, frame.shape[1], 70)
-        step = state["step"]
-        if step < len(CALIB_STEPS):
-            cardinal, _ = CALIB_STEPS[step]
-            color = CALIB_COLORS[cardinal]
-            label = calib_cardinal_labels[cardinal]
-            cv2.putText(img, S(lang, "calib_step", step=step+1, cardinal=label),
-                        (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, color, 1)
-            cv2.putText(img, S(lang, "calib_redo"),
-                        (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
-        else:
-            cv2.putText(img, S(lang, "calib_confirm"),
-                        (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (100, 255, 180), 1)
-            cv2.putText(img, S(lang, "calib_post_confirm"),
-                        (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 180, 180), 1)
-        for cardinal, pt in state["points"].items():
+
+        if state["phase"] == "pool":
+            step = state["step"]
+            if step < len(CALIB_STEPS):
+                cardinal, _ = CALIB_STEPS[step]
+                color = CALIB_COLORS[cardinal]
+                label = calib_cardinal_labels[cardinal]
+                cv2.putText(img, S(lang, "calib_step", step=step+1, cardinal=label),
+                            (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, color, 1)
+                cv2.putText(img, S(lang, "calib_redo"),
+                            (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
+            else:
+                if not require_platform:
+                    cv2.putText(img, S(lang, "calib_confirm"),
+                                (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (100, 255, 180), 1)
+                    cv2.putText(img, S(lang, "calib_post_confirm"),
+                                (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 180, 180), 1)
+        elif state["phase"] == "platform":
+            step = state["step"]
+            if step < len(PLATFORM_STEPS):
+                corner, _ = PLATFORM_STEPS[step]
+                color = PLATFORM_COLORS[corner]
+                cv2.putText(img, S(lang, "calib_pool_done", corner=corner),
+                            (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, color, 1)
+                cv2.putText(img, S(lang, "calib_redo"),
+                            (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
+            else:
+                cv2.putText(img, S(lang, "calib_all_done"),
+                            (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (100, 255, 180), 1)
+                cv2.putText(img, S(lang, "calib_post_confirm"),
+                            (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 180, 180), 1)
+
+        for cardinal, pt in state["pool_points"].items():
             col = CALIB_COLORS[cardinal]
             cv2.circle(img, pt, 7, col, -1)
             cv2.circle(img, pt, 9, (255, 255, 255), 1)
             cv2.putText(img, calib_cardinal_labels[cardinal],
                         (pt[0] + 11, pt[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
-        if len(state["points"]) == 4:
-            p = state["points"]
+
+        if len(state["pool_points"]) == 4:
+            p = state["pool_points"]
             result = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
             if result is not None:
                 cx, cy, rx, ry, angle = result
@@ -381,65 +434,96 @@ def run_calibration(frame: np.ndarray, lang: str) -> dict | None:
                 cv2.circle(img, (cx, cy), 5, (100, 255, 180), -1)
                 cv2.line(img, p["NORTH"], p["SOUTH"], (100, 255, 180), 1)
                 cv2.line(img, p["WEST"],  p["EAST"],  (100, 255, 180), 1)
+
+        for corner, pt in state["platform_points"].items():
+            col = PLATFORM_COLORS[corner]
+            cv2.circle(img, pt, 7, col, -1)
+            cv2.circle(img, pt, 9, (255, 255, 255), 1)
+            cv2.putText(img, corner, (pt[0] + 11, pt[1] + 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
+
+        pts_ordered = [state["platform_points"].get(s[0]) for s in PLATFORM_STEPS if s[0] in state["platform_points"]]
+        if len(pts_ordered) >= 2:
+            for i in range(len(pts_ordered) - 1):
+                cv2.line(img, pts_ordered[i], pts_ordered[i+1], (200, 200, 50), 1)
+        if len(state["platform_points"]) == 4:
+            corners_ordered = [state["platform_points"][s[0]] for s in PLATFORM_STEPS]
+            pts_np = np.array(corners_ordered, dtype=np.int32)
+            cv2.polylines(img, [pts_np], isClosed=True, color=(200, 200, 50), thickness=2)
+
         return img
 
     def on_click(event, x, y, flags, param):
-        if event != cv2.EVENT_LBUTTONDOWN: return
-        step = state["step"]
-        if step >= len(CALIB_STEPS): return
-        cardinal, _ = CALIB_STEPS[step]
-        state["points"][cardinal] = (x, y)
-        state["step"] += 1
+        if event != cv2.EVENT_LBUTTONDOWN:
+            return
+        if state["phase"] == "pool":
+            step = state["step"]
+            if step >= len(CALIB_STEPS):
+                return
+            cardinal, _ = CALIB_STEPS[step]
+            state["pool_points"][cardinal] = (x, y)
+            state["step"] += 1
+            if state["step"] == len(CALIB_STEPS) and require_platform:
+                state["phase"] = "platform"
+                state["step"] = 0
+        elif state["phase"] == "platform":
+            step = state["step"]
+            if step >= len(PLATFORM_STEPS):
+                return
+            corner, _ = PLATFORM_STEPS[step]
+            state["platform_points"][corner] = (x, y)
+            state["step"] += 1
         cv2.imshow(window, draw(state["frame"]))
 
     cv2.setMouseCallback(window, on_click)
     cv2.imshow(window, draw(state["frame"]))
 
     result = None
-    pick_platform = False
     while True:
         key = cv2.waitKey(20) & 0xFF
         if key == 27:
             break
         elif key in (ord('r'), ord('R')):
             state["step"] = 0
-            state["points"] = {}
+            state["phase"] = "pool"
+            state["pool_points"] = {}
+            state["platform_points"] = {}
             cv2.imshow(window, draw(state["frame"]))
         elif key in (13, 10):
-            p = state["points"]
+            p = state["pool_points"]
             if len(p) == 4:
-                result = {
-                    "pool_west":  p["WEST"],
-                    "pool_north": p["NORTH"],
-                    "pool_east":  p["EAST"],
-                    "pool_south": p["SOUTH"],
-                }
-                break
-        elif key in (ord('m'), ord('M')):
-            p = state["points"]
-            if len(p) == 4:
-                result = {
-                    "pool_west":  p["WEST"],
-                    "pool_north": p["NORTH"],
-                    "pool_east":  p["EAST"],
-                    "pool_south": p["SOUTH"],
-                }
-                pick_platform = True
-                break
+                if require_platform:
+                    plat = state["platform_points"]
+                    if len(plat) == 4:
+                        result = {
+                            "pool_west":   p["WEST"],
+                            "pool_north":  p["NORTH"],
+                            "pool_east":   p["EAST"],
+                            "pool_south":  p["SOUTH"],
+                            "platform_nw": plat["NW"],
+                            "platform_ne": plat["NE"],
+                            "platform_se": plat["SE"],
+                            "platform_sw": plat["SW"],
+                        }
+                        break
+                else:
+                    result = {
+                        "pool_west":  p["WEST"],
+                        "pool_north": p["NORTH"],
+                        "pool_east":  p["EAST"],
+                        "pool_south": p["SOUTH"],
+                    }
+                    break
         cv2.imshow(window, draw(state["frame"]))
 
     cv2.destroyWindow(window)
-    if result is None:
-        return None
-    return result, pick_platform
+    return result
 
 def run_platform_calibration(frame: np.ndarray, lang: str) -> dict | None:
     state = {"step": 0, "points": {}, "frame": frame.copy()}
     window = "Platform Calibration"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(window, min(frame.shape[1], 1280), min(frame.shape[0], 720))
-
-    corner_labels = {s[0]: s[0] for s in PLATFORM_STEPS}
 
     def draw(base):
         img = base.copy()
@@ -524,7 +608,7 @@ def confirm_pool_from_args(frame, cfg, lang):
     }
     result = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
     if result is None:
-        return False, False
+        return False
     cx, cy, rx, ry, angle = result
     img = frame.copy()
     cv2.ellipse(img, (cx, cy), (rx, ry), angle, 0, 360, (100, 255, 180), 2)
@@ -548,7 +632,6 @@ def confirm_pool_from_args(frame, cfg, lang):
     cv2.resizeWindow(window, min(frame.shape[1], 1280), min(frame.shape[0], 720))
     cv2.imshow(window, img)
     confirmed = False
-    pick_platform = False
     while True:
         key = cv2.waitKey(20) & 0xFF
         if key in (13, 10):
@@ -557,12 +640,8 @@ def confirm_pool_from_args(frame, cfg, lang):
         elif key == 27:
             confirmed = False
             break
-        elif key in (ord('m'), ord('M')):
-            confirmed = True
-            pick_platform = True
-            break
     cv2.destroyWindow(window)
-    return confirmed, pick_platform
+    return confirmed
 
 def confirm_platform_from_args(frame, cfg, lang):
     corners = [cfg["platform_nw"], cfg["platform_ne"], cfg["platform_se"], cfg["platform_sw"]]
@@ -761,6 +840,9 @@ def segment_crosses_platform_twice(p1, p2, platform_corners) -> bool:
 def empty_quadrant_stats():
     return {q: {"time_s": 0.0, "dist_cm": 0.0} for q in QUADRANT_NAMES}
 
+def empty_quadrant_exits():
+    return {q: 0 for q in QUADRANT_NAMES}
+
 def accumulate_segment(stats, p1, p2, west, north, east, south, frame_dt, scale_x, scale_y):
     total_dist_px = euclidean_px(p1, p2)
     splits = segment_quadrant_splits(p1, p2, west, north, east, south)
@@ -777,15 +859,25 @@ def accumulate_static(stats, pos, west, north, east, south, frame_dt):
     q = get_quadrant(pos[0], pos[1], west, north, east, south)
     stats[q]["time_s"] += frame_dt
 
+def count_quadrant_exits(prev_pos, curr_pos, west, north, east, south, exits_dict):
+    prev_q = get_quadrant(prev_pos[0], prev_pos[1], west, north, east, south)
+    splits = segment_quadrant_splits(prev_pos, curr_pos, west, north, east, south)
+    current_q = prev_q
+    for (_, _, q) in splits:
+        if q != current_q and current_q in exits_dict:
+            exits_dict[current_q] += 1
+        current_q = q
+
 def draw_transparent_banner(img, x0, y0, x1, y1, alpha=0.72):
     overlay = img.copy()
     cv2.rectangle(overlay, (x0, y0), (x1, y1), (10, 10, 10), -1)
     cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0, img)
     cv2.rectangle(img, (x0, y0), (x1, y1), (80, 80, 80), 1)
 
-def draw_leaderboard(img, stats, total_time_s, total_dist_cm, lang):
+def draw_leaderboard(img, stats, total_time_s, total_dist_cm, lang, quad_exits=None):
     sorted_q = ["NW", "NE", "SW", "SE"]
-    panel_w  = 310
+    show_exits = quad_exits is not None
+    panel_w  = 360 if show_exits else 310
     row_h    = 22
     pad      = 8
     n_rows   = len(QUADRANT_NAMES)
@@ -811,6 +903,9 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm, lang):
         cv2.putText(img, f"#{rank+1} {q}", (x0 + pad, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.44, color, 1)
         cv2.putText(img, f"T:{t_s:5.1f}s {t_pct:4.1f}%", (x0 + pad + 52, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (220, 220, 220), 1)
         cv2.putText(img, f"D:{d_cm:6.1f}cm {d_pct:4.1f}%", (x0 + pad + 166, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 200, 50), 1)
+        if show_exits:
+            ex = quad_exits.get(q, 0)
+            cv2.putText(img, f"X:{ex}", (x0 + pad + 298, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (100, 200, 255), 1)
 
 ## Rat Detection
 
@@ -910,6 +1005,12 @@ def build_rerun_command(video_path, args, cfg):
         parts.append(f"--trail_len {args.trail_len}")
     if args.debug_frames != 0:
         parts.append(f"--debug_frames {args.debug_frames}")
+    if args.quadrantcross:
+        parts.append("--quadrantcross")
+    if args.platformcross:
+        parts.append("--platformcross")
+    if args.tracemapcolor is not None:
+        parts.append(f"--tracemapcolor {args.tracemapcolor}")
     parts.append(f"--pool_west {fmt_pt(cfg['pool_west'])}")
     parts.append(f"--pool_north {fmt_pt(cfg['pool_north'])}")
     parts.append(f"--pool_east {fmt_pt(cfg['pool_east'])}")
@@ -948,8 +1049,13 @@ def main():
     parser.add_argument("--platform_ne",         default=None,   type=str)
     parser.add_argument("--platform_se",         default=None,   type=str)
     parser.add_argument("--platform_sw",         default=None,   type=str)
+    parser.add_argument("--quadrantcross",       default=False,  action="store_true")
+    parser.add_argument("--platformcross",       default=False,  action="store_true")
+    parser.add_argument("--tracemapcolor",       default=None,   type=str)
     parser.add_argument("--appmode",             default=False,  action="store_true")
     args = parser.parse_args()
+
+    tracemap_color = parse_tracemap_color(args.tracemapcolor)
 
     lang = args.language
 
@@ -995,43 +1101,42 @@ def main():
     if not ret:
         raise RuntimeError("Could not read first frame from video.")
 
-    pick_platform = False
-
     if pool_coords_valid(cfg):
-        confirmed, pick_platform = confirm_pool_from_args(first_frame, cfg, lang)
+        confirmed = confirm_pool_from_args(first_frame, cfg, lang)
         if not confirmed:
-            result = run_calibration(first_frame, lang)
+            result = run_calibration(first_frame, lang, require_platform=args.platformcross)
             if result is None:
                 raise RuntimeError("Pool calibration aborted.")
-            pool_result, pick_platform = result
-            cfg.update(pool_result)
-        elif pick_platform:
-            cfg["platform_nw"] = None
-            cfg["platform_ne"] = None
-            cfg["platform_se"] = None
-            cfg["platform_sw"] = None
-    else:
-        result = run_calibration(first_frame, lang)
-        if result is None:
-            raise RuntimeError("Pool calibration aborted.")
-        pool_result, pick_platform = result
-        cfg.update(pool_result)
-
-    if pick_platform:
-        plat_result = run_platform_calibration(first_frame, lang)
-        if plat_result is not None:
-            cfg.update(plat_result)
-    elif platform_coords_valid(cfg):
-        confirmed = confirm_platform_from_args(first_frame, cfg, lang)
-        if not confirmed:
-            plat_result = run_platform_calibration(first_frame, lang)
-            if plat_result is not None:
-                cfg.update(plat_result)
+            cfg.update(result)
+        else:
+            if args.platformcross:
+                if platform_coords_valid(cfg):
+                    plat_confirmed = confirm_platform_from_args(first_frame, cfg, lang)
+                    if not plat_confirmed:
+                        plat_result = run_platform_calibration(first_frame, lang)
+                        if plat_result is None:
+                            raise RuntimeError("Platform calibration aborted (--platformcross requires platform).")
+                        cfg.update(plat_result)
+                else:
+                    plat_result = run_platform_calibration(first_frame, lang)
+                    if plat_result is None:
+                        raise RuntimeError("Platform calibration aborted (--platformcross requires platform).")
+                    cfg.update(plat_result)
             else:
                 cfg["platform_nw"] = None
                 cfg["platform_ne"] = None
                 cfg["platform_se"] = None
                 cfg["platform_sw"] = None
+    else:
+        result = run_calibration(first_frame, lang, require_platform=args.platformcross)
+        if result is None:
+            raise RuntimeError("Calibration aborted.")
+        cfg.update(result)
+        if not args.platformcross:
+            cfg["platform_nw"] = None
+            cfg["platform_ne"] = None
+            cfg["platform_se"] = None
+            cfg["platform_sw"] = None
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
@@ -1054,7 +1159,7 @@ def main():
     pool      = (cx, cy, rx, ry, angle)
     pool_mask = make_ellipse_mask((frame_h, frame_w), *pool)
 
-    has_platform = platform_coords_valid(cfg)
+    has_platform = args.platformcross and platform_coords_valid(cfg)
     platform_corners = None
     if has_platform:
         platform_corners = [cfg["platform_nw"], cfg["platform_ne"],
@@ -1084,6 +1189,7 @@ def main():
     running_dist_cm      = 0.0
     prev_pos             = None
     q_stats              = empty_quadrant_stats()
+    q_exits              = empty_quadrant_exits() if args.quadrantcross else None
     platform_exits       = 0
     prev_inside_platform = False
     loop_start           = time.time()
@@ -1115,6 +1221,8 @@ def main():
             running_dist_cm += euclidean_cm(prev_pos, pos, scale_x, scale_y)
             accumulate_segment(q_stats, prev_pos, pos, west, north, east, south,
                                frame_dt, scale_x, scale_y)
+            if args.quadrantcross:
+                count_quadrant_exits(prev_pos, pos, west, north, east, south, q_exits)
         elif pos and prev_pos is None:
             accumulate_static(q_stats, pos, west, north, east, south, frame_dt)
         elif pos and prev_pos == pos:
@@ -1206,7 +1314,7 @@ def main():
 
         total_q_time = sum(v["time_s"]  for v in q_stats.values())
         total_q_dist = sum(v["dist_cm"] for v in q_stats.values())
-        draw_leaderboard(annotated, q_stats, total_q_time, total_q_dist, lang)
+        draw_leaderboard(annotated, q_stats, total_q_time, total_q_dist, lang, quad_exits=q_exits)
 
         writer.write(annotated)
         frame_idx += 1
@@ -1257,6 +1365,7 @@ def main():
     col_tp = S(lang, "summary_col_tp")
     col_d  = S(lang, "summary_col_d")
     col_dp = S(lang, "summary_col_dp")
+    col_ex = S(lang, "summary_col_exits")
 
     rerun_cmd = build_rerun_command(video_path, args, cfg)
 
@@ -1302,19 +1411,48 @@ def main():
         S(lang, "summary_pairs",    n=valid_pairs),
         "",
         S(lang, "summary_quad_hdr"),
-        f"{col_q:<10} {col_t:>10} {col_tp:>10} {col_d:>12} {col_dp:>10}",
-        f"{'-'*56}",
     ]
+
+    if args.quadrantcross:
+        lines.append(f"{col_q:<10} {col_t:>10} {col_tp:>10} {col_d:>12} {col_dp:>10} {col_ex:>8}")
+        lines.append(f"{'-'*66}")
+    else:
+        lines.append(f"{col_q:<10} {col_t:>10} {col_tp:>10} {col_d:>12} {col_dp:>10}")
+        lines.append(f"{'-'*56}")
+
     for q in sorted_q:
         t_s   = q_stats_final[q]["time_s"]
         d_cm  = q_stats_final[q]["dist_cm"]
         t_pct = (t_s  / total_q_time * 100) if total_q_time > 0 else 0.0
         d_pct = (d_cm / total_q_dist * 100) if total_q_dist > 0 else 0.0
-        lines.append(f"{q:<10} {t_s:>10.2f} {t_pct:>9.1f}% {d_cm:>11.2f} {d_pct:>9.1f}%")
+        if args.quadrantcross:
+            ex = q_exits.get(q, 0)
+            lines.append(f"{q:<10} {t_s:>10.2f} {t_pct:>9.1f}% {d_cm:>11.2f} {d_pct:>9.1f}% {ex:>8}")
+        else:
+            lines.append(f"{q:<10} {t_s:>10.2f} {t_pct:>9.1f}% {d_cm:>11.2f} {d_pct:>9.1f}%")
+
     total_label = S(lang, "summary_total")
+    if args.quadrantcross:
+        total_exits = sum(q_exits.values())
+        lines += [
+            f"{'-'*66}",
+            f"{total_label:<10} {total_q_time:>10.2f} {'100.0':>9}% {total_q_dist:>11.2f} {'100.0':>9}% {total_exits:>8}",
+        ]
+    else:
+        lines += [
+            f"{'-'*56}",
+            f"{total_label:<10} {total_q_time:>10.2f} {'100.0':>9}% {total_q_dist:>11.2f} {'100.0':>9}%",
+        ]
+
+    if args.quadrantcross:
+        lines += [
+            "",
+            S(lang, "summary_quad_exits_hdr"),
+        ]
+        for q in QUADRANT_NAMES:
+            lines.append(S(lang, "summary_quad_exit", q=q, n=q_exits[q]))
+
     lines += [
-        f"{'-'*56}",
-        f"{total_label:<10} {total_q_time:>10.2f} {'100.0':>9}% {total_q_dist:>11.2f} {'100.0':>9}%",
         "",
         S(lang, "summary_rerun"),
         rerun_cmd,
@@ -1323,14 +1461,14 @@ def main():
     with open(summary_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
-    tracemap(records, first_frame, output_dir, video_path, ts)
+    tracemap(records, first_frame, output_dir, video_path, ts, color=tracemap_color)
     heatmap(records, first_frame, output_dir, video_path, ts)
 
     if not cfg["app_mode"]:
         print("\n" + "\n".join(lines))
 
     if cfg["app_mode"]:
-        print(json.dumps({
+        out = {
             "done":           True,
             "video_out":      str(video_out),
             "csv_out":        str(csv_path),
@@ -1340,8 +1478,11 @@ def main():
             "total_dist_cm":  round(total_dist_cm, 2),
             "total_frames":   frame_idx,
             "detected":       detected,
-            "platform_exits": platform_exits,
-        }), flush=True)
+            "platform_exits": platform_exits if has_platform else None,
+        }
+        if args.quadrantcross:
+            out["quadrant_exits"] = q_exits
+        print(json.dumps(out), flush=True)
 
 if __name__ == "__main__":
     main()

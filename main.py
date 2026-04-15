@@ -236,7 +236,7 @@ def S(lang, key, **kwargs):
     return s.format(**kwargs) if kwargs else s
 
 
-def tracemap(records, first_frame, output_dir, video_path, ts):
+def tracemap(records, first_frame, output_dir, video_path, ts, color=(255, 255, 0)):
     canvas = first_frame.copy()
     output_path = output_dir / f"{video_path.stem}_{ts}_tracemap.jpg"
 
@@ -257,7 +257,7 @@ def tracemap(records, first_frame, output_dir, video_path, ts):
                 canvas,
                 prev_point,
                 point,
-                (255, 255, 0),  # Aqua
+                color,  # Aqua
                 2,
                 lineType=cv2.LINE_AA
             )
@@ -265,6 +265,49 @@ def tracemap(records, first_frame, output_dir, video_path, ts):
         prev_point = point
 
     cv2.imwrite(str(output_path), canvas)
+
+import cv2
+import numpy as np
+
+
+def heatmap(records, first_frame, output_dir, video_path, ts, sigma=20):
+    h, w = first_frame.shape[:2]
+
+    heat = np.zeros((h, w), dtype=np.float32)
+
+    prev_time = None
+
+    for r in records:
+        x = r.get("x")
+        y = r.get("y")
+        t = r.get("timestamp_s")
+
+        if x is None or y is None or t is None:
+            prev_time = None
+            continue
+
+        x = int(x)
+        y = int(y)
+
+        if prev_time is not None:
+            dt = t - prev_time
+
+            if dt < 0 or dt > 1:
+                dt = 0
+
+            if 0 <= x < w and 0 <= y < h:
+                heat[y, x] += dt
+
+        prev_time = t
+
+    heat = cv2.GaussianBlur(heat, (0, 0), sigmaX=sigma, sigmaY=sigma)
+    heat_norm = cv2.normalize(heat, None, 0, 255, cv2.NORM_MINMAX)
+    heat_uint8 = heat_norm.astype(np.uint8)
+    heat_color = cv2.applyColorMap(heat_uint8, cv2.COLORMAP_JET)
+    overlay = cv2.addWeighted(first_frame, 0.6, heat_color, 0.4, 0)
+
+    output_path = output_dir / f"{video_path.stem}_{ts}_heatmap.jpg"
+    cv2.imwrite(str(output_path), overlay)
 
 ## Progress
 
@@ -1284,6 +1327,7 @@ def main():
         f.write("\n".join(lines))
 
     tracemap(records, first_frame, output_dir, video_path, ts)
+    heatmap(records, first_frame, output_dir, video_path, ts)
 
     if not cfg["app_mode"]:
         print("\n" + "\n".join(lines))

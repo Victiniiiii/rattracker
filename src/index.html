@@ -81,14 +81,16 @@
 				<progress id="progressBar" value="0" max="100"></progress>
 				<span id="etaText"></span>
 				<div id="outputTabs">
-					<button class="tab active" data-tab="video" onclick="switchTab(this)" data-i18n="tab_video">Video</button>
+					<button id="videotabbutton" class="tab" data-tab="video" onclick="switchTab(this)" data-i18n="tab_video">Video</button>
 					<button class="tab" data-tab="csv" onclick="switchTab(this)" data-i18n="tab_csv">CSV</button>
 					<button class="tab" data-tab="summary" onclick="switchTab(this)" data-i18n="tab_summary">Summary</button>
+					<button class="tab" data-tab="tracemap" onclick="switchTab(this)" data-i18n="tab_tracemap">Tracemap</button>
+					<button class="tab" data-tab="heatmap" onclick="switchTab(this)" data-i18n="tab_heatmap">Heatmap</button>
 				</div>
 			</div>
 
 			<div id="outputArea">
-				<div id="tabVideo" class="tabContent">
+				<div id="tabVideo" class="tabContent" hidden>
 					<video id="outputVideo" controls></video>
 				</div>
 				<div id="tabCsv" class="tabContent" hidden>
@@ -96,6 +98,12 @@
 				</div>
 				<div id="tabSummary" class="tabContent" hidden>
 					<pre id="summaryText"></pre>
+				</div>
+                <div id="tabTracemap" class="tabContent" hidden>
+					<pre id="tracemap"></pre>
+				</div>
+                <div id="tabHeatmap" class="tabContent" hidden>
+					<pre id="heatmap"></pre>
 				</div>
 			</div>
 		</div>

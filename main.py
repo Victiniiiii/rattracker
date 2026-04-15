@@ -1065,6 +1065,8 @@ def main():
     video_out    = output_dir / f"{video_path.stem}_{ts}.mp4"
     csv_path     = output_dir / f"{video_path.stem}_{ts}_coordinates.csv"
     summary_path = output_dir / f"{video_path.stem}_{ts}_summary.txt"
+    tracemap_path = output_dir / f"{video_path.stem}_{ts}_tracemap.jpg"
+    heatmap_path = output_dir / f"{video_path.stem}_{ts}_heatmap.jpg"
 
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(video_out), fourcc, fps, (frame_w, frame_h))
@@ -1333,6 +1335,8 @@ def main():
             "video_out":      str(video_out),
             "csv_out":        str(csv_path),
             "summary_out":    str(summary_path),
+            "tracemap_out":   str(tracemap_path),
+            "heatmap_out":    str(heatmap_path),
             "total_dist_cm":  round(total_dist_cm, 2),
             "total_frames":   frame_idx,
             "detected":       detected,

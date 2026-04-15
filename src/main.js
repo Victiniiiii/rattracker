@@ -55,6 +55,8 @@ const I18N = {
 		tab_video: "Video",
 		tab_csv: "CSV",
 		tab_summary: "Summary",
+		tab_tracemap: "Tracemap",
+		tab_heatmap: "Heatmap",
 	},
 	fr: {
 		title: "Rat Tracker",
@@ -86,6 +88,8 @@ const I18N = {
 		tab_video: "Vidéo",
 		tab_csv: "CSV",
 		tab_summary: "Résumé",
+		tab_tracemap: "Carte de Chaleur",
+		tab_heatmap: "Carte de Trajectoire",
 	},
 	tr: {
 		title: "Fare İzleyici",
@@ -117,6 +121,8 @@ const I18N = {
 		tab_video: "Video",
 		tab_csv: "CSV",
 		tab_summary: "Özet",
+		tab_tracemap: "İz Haritası",
+		tab_heatmap: "Isı Haritası",
 	},
 };
 
@@ -195,7 +201,7 @@ function populateForm(c) {
 	for (const [key, value] of Object.entries(c)) {
 		const input = form.elements[key];
 		if (!input) continue;
-		if (input.type === "checkbox") input.checked = !!value;
+		if (input.type == "checkbox") input.checked = !!value;
 		else input.value = value ?? "";
 	}
 }
@@ -205,8 +211,8 @@ function readForm() {
 	const c = {};
 	for (const el of form.elements) {
 		if (!el.name) continue;
-		if (el.type === "checkbox") c[el.name] = el.checked;
-		else if (el.type === "number") c[el.name] = el.value === "" ? null : Number(el.value);
+		if (el.type == "checkbox") c[el.name] = el.checked;
+		else if (el.type == "number") c[el.name] = el.value == "" ? null : Number(el.value);
 		else c[el.name] = el.value;
 	}
 	return c;
@@ -216,10 +222,10 @@ function buildArgs(filePath, c) {
 	const args = ["--video", filePath, "--language", cfg.language];
 
 	const startVal = document.getElementById("startTime").value;
-	if (startVal !== "") args.push("--start", startVal);
+	if (startVal != "") args.push("--start", startVal);
 
 	const endVal = document.getElementById("endTime").value;
-	if (endVal !== "") args.push("--end", endVal);
+	if (endVal != "") args.push("--end", endVal);
 
 	args.push("--pool_radius_cm", document.getElementById("poolRadius").value);
 	args.push("--mog2_history", String(c.mog2_history));
@@ -280,7 +286,7 @@ window.closeSettings = function () {
 };
 
 window.overlayClose = function (e) {
-	if (e.target === document.getElementById("settingsOverlay")) closeSettings();
+	if (e.target == document.getElementById("settingsOverlay")) closeSettings();
 };
 
 window.saveSettings = async function (e) {
@@ -344,6 +350,8 @@ window.runScript = async function () {
 			saveConfig(cfg);
 
 			try {
+				document.getElementById("tabVideo").hidden = false;
+				document.getElementById("videotabbutton").classList.add("active");
 				const fileBytes = await tauri.fs.readFile(parsed.video_out);
 				const blob = new Blob([fileBytes], { type: "video/mp4" });
 				const blobUrl = URL.createObjectURL(blob);
@@ -366,6 +374,13 @@ window.runScript = async function () {
 				document.getElementById("summaryText").textContent = summaryText;
 			} catch (e) {
 				console.error("Summary load error:", e);
+			}
+
+			try {
+				document.getElementById("heatmap").style.backgroundImage = `url("${convertFileSrc(parsed.heatmap_out)}")`;
+				document.getElementById("tracemap").style.backgroundImage = `url("${convertFileSrc(parsed.tracemap_out)}")`;
+			} catch (e) {
+				console.error(e);
 			}
 
 			setUIRunning(false);

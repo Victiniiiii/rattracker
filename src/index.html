@@ -37,24 +37,172 @@
 				<form id="configForm" onsubmit="saveSettings(event)">
 					<h3 data-i18n="detection">Detection</h3>
 					<div class="formGrid">
-						<label data-i18n="mog2_history">MOG2 History<input type="number" name="mog2_history" min="1" value="120" /></label>
-						<label data-i18n="mog2_threshold">MOG2 Threshold<input type="number" name="mog2_threshold" min="1" value="40" /></label>
-						<label class="checkLabel" data-i18n="detect_shadows">Detect Shadows<input type="checkbox" name="mog2_detect_shadow" /></label>
-						<label data-i18n="morph_open">Morph Open Kernel<input type="number" name="morph_open_k" min="1" step="2" value="3" /></label>
-						<label data-i18n="morph_close">Morph Close Kernel<input type="number" name="morph_close_k" min="1" step="2" value="15" /></label>
-						<label data-i18n="min_area">Min Contour Area (px²)<input type="number" name="min_contour_area" min="0" value="300" /></label>
-						<label data-i18n="max_area">Max Contour Area (px²)<input type="number" name="max_contour_area" min="0" value="12000" /></label>
-						<label data-i18n="trail_len">Trail Length (frames)<input type="number" name="trail_len" min="1" value="40" /></label>
-						<label data-i18n="debug_frames">Debug Frames<input type="number" name="debug_frames" min="0" value="0" /></label>
+						<div class="formField">
+							<label for="mog2_history" data-i18n="mog2_history">MOG2 History</label>
+							<p class="fieldDesc" data-i18n-desc="mog2_history_desc"></p>
+							<input type="number" id="mog2_history" name="mog2_history" min="1" value="120" />
+						</div>
+
+						<div class="formField">
+							<label for="mog2_threshold" data-i18n="mog2_threshold">MOG2 Threshold</label>
+							<p class="fieldDesc" data-i18n-desc="mog2_threshold_desc"></p>
+							<input type="number" id="mog2_threshold" name="mog2_threshold" min="1" value="40" />
+						</div>
+
+						<div class="formField formFieldCheck">
+							<label class="checkLabel">
+								<input type="checkbox" id="mog2_detect_shadow" name="mog2_detect_shadow" />
+								<span data-i18n="detect_shadows">Detect Shadows</span>
+							</label>
+							<p class="fieldDesc" data-i18n-desc="detect_shadows_desc"></p>
+						</div>
+
+						<div class="formField">
+							<label for="morph_open_k" data-i18n="morph_open">Morph Open Kernel</label>
+							<p class="fieldDesc" data-i18n-desc="morph_open_desc"></p>
+							<input type="number" id="morph_open_k" name="morph_open_k" min="1" step="2" value="3" />
+						</div>
+
+						<div class="formField">
+							<label for="morph_close_k" data-i18n="morph_close">Morph Close Kernel</label>
+							<p class="fieldDesc" data-i18n-desc="morph_close_desc"></p>
+							<input type="number" id="morph_close_k" name="morph_close_k" min="1" step="2" value="15" />
+						</div>
+
+						<div class="formField">
+							<label for="min_contour_area" data-i18n="min_area">Min Contour Area (px²)</label>
+							<p class="fieldDesc" data-i18n-desc="min_area_desc"></p>
+							<input type="number" id="min_contour_area" name="min_contour_area" min="0" value="300" />
+						</div>
+
+						<div class="formField">
+							<label for="max_contour_area" data-i18n="max_area">Max Contour Area (px²)</label>
+							<p class="fieldDesc" data-i18n-desc="max_area_desc"></p>
+							<input type="number" id="max_contour_area" name="max_contour_area" min="0" value="12000" />
+						</div>
+
+						<div class="formField">
+							<label for="trail_len" data-i18n="trail_len">Trail Length (frames)</label>
+							<p class="fieldDesc" data-i18n-desc="trail_len_desc"></p>
+							<input type="number" id="trail_len" name="trail_len" min="1" value="40" />
+						</div>
+
+						<div class="formField">
+							<label for="debug_frames" data-i18n="debug_frames">Debug Frames</label>
+							<p class="fieldDesc" data-i18n-desc="debug_frames_desc"></p>
+							<input type="number" id="debug_frames" name="debug_frames" min="0" value="0" />
+						</div>
 					</div>
 
 					<h3 data-i18n="pool_calib">Pool Calibration Cache</h3>
-					<p class="note" data-i18n="pool_note">Auto-filled after first calibration. Edit to reuse across runs.</p>
+					<p class="sectionNote" data-i18n="pool_note">Auto-filled after first calibration. Edit to reuse across runs.</p>
 					<div class="formGrid">
-						<label data-i18n="pool_west">Pool West (x,y)<input type="text" name="pool_west" placeholder="e.g. 320,240" /></label>
-						<label data-i18n="pool_north">Pool North (x,y)<input type="text" name="pool_north" placeholder="e.g. 640,120" /></label>
-						<label data-i18n="pool_east">Pool East (x,y)<input type="text" name="pool_east" placeholder="e.g. 960,240" /></label>
-						<label data-i18n="pool_south">Pool South (x,y)<input type="text" name="pool_south" placeholder="e.g. 640,360" /></label>
+						<div class="formField">
+							<label for="pool_west" data-i18n="pool_west">Pool West (x,y)</label>
+							<input type="text" id="pool_west" name="pool_west" placeholder="e.g. 320,240" />
+						</div>
+
+						<div class="formField">
+							<label for="pool_north" data-i18n="pool_north">Pool North (x,y)</label>
+							<input type="text" id="pool_north" name="pool_north" placeholder="e.g. 640,120" />
+						</div>
+
+						<div class="formField">
+							<label for="pool_east" data-i18n="pool_east">Pool East (x,y)</label>
+							<input type="text" id="pool_east" name="pool_east" placeholder="e.g. 960,240" />
+						</div>
+
+						<div class="formField">
+							<label for="pool_south" data-i18n="pool_south">Pool South (x,y)</label>
+							<input type="text" id="pool_south" name="pool_south" placeholder="e.g. 640,360" />
+						</div>
+					</div>
+
+					<h3 data-i18n="platform_calib">Platform Calibration Cache</h3>
+					<p class="sectionNote" data-i18n="platform_note">Required for platform-dependent features. Auto-filled after first platform calibration.</p>
+					<div class="formGrid">
+						<div class="formField">
+							<label for="platform_nw" data-i18n="platform_nw">Platform NW (x,y)</label>
+							<input type="text" id="platform_nw" name="platform_nw" placeholder="e.g. 580,200" />
+						</div>
+
+						<div class="formField">
+							<label for="platform_ne" data-i18n="platform_ne">Platform NE (x,y)</label>
+							<input type="text" id="platform_ne" name="platform_ne" placeholder="e.g. 660,200" />
+						</div>
+
+						<div class="formField">
+							<label for="platform_se" data-i18n="platform_se">Platform SE (x,y)</label>
+							<input type="text" id="platform_se" name="platform_se" placeholder="e.g. 660,280" />
+						</div>
+
+						<div class="formField">
+							<label for="platform_sw" data-i18n="platform_sw">Platform SW (x,y)</label>
+							<input type="text" id="platform_sw" name="platform_sw" placeholder="e.g. 580,280" />
+						</div>
+					</div>
+
+					<h3 data-i18n="features">Analysis Features</h3>
+					<p class="sectionNote" data-i18n="features_note">Enable optional analyses. Platform-dependent features require platform calibration coordinates.</p>
+					<div class="formGrid">
+						<div class="formField formFieldCheck">
+							<label class="checkLabel">
+								<input type="checkbox" id="quadrantcross" name="quadrantcross" />
+								<span data-i18n="quadrantcross">Quadrant Crossings</span>
+							</label>
+							<p class="fieldDesc" data-i18n-desc="quadrantcross_desc"></p>
+						</div>
+
+						<div class="formField formFieldCheck">
+							<label class="checkLabel">
+								<input type="checkbox" id="platformcross" name="platformcross" />
+								<span data-i18n="platformcross">Platform Crossings</span>
+							</label>
+							<p class="fieldDesc" data-i18n-desc="platformcross_desc"></p>
+						</div>
+
+						<div class="formField formFieldCheck">
+							<label class="checkLabel">
+								<input type="checkbox" id="paraplatform_enabled" name="paraplatform_enabled" onchange="updateParaplatformScaleVisibility()" />
+								<span data-i18n="paraplatform">ParaPlatform Analysis</span>
+							</label>
+							<p class="fieldDesc" data-i18n-desc="paraplatform_desc"></p>
+						</div>
+
+						<div class="formField" id="paraplatformScaleRow" hidden>
+							<label for="paraplatform_scale" data-i18n="paraplatform_scale">Area Scale Factor</label>
+							<p class="fieldDesc" data-i18n-desc="paraplatform_scale_desc"></p>
+							<input type="number" id="paraplatform_scale" name="paraplatform_scale" min="1" step="1" value="4" />
+						</div>
+
+						<div class="formField formFieldCheck">
+							<label class="checkLabel">
+								<input type="checkbox" id="proximity" name="proximity" />
+								<span data-i18n="proximity">Proximity to Platform</span>
+							</label>
+							<p class="fieldDesc" data-i18n-desc="proximity_desc"></p>
+						</div>
+
+						<div class="formField formFieldCheck">
+							<label class="checkLabel">
+								<input type="checkbox" id="latency" name="latency" />
+								<span data-i18n="latency">Latency to Platform</span>
+							</label>
+							<p class="fieldDesc" data-i18n-desc="latency_desc"></p>
+						</div>
+
+						<div class="formField formFieldCheck">
+							<label class="checkLabel">
+								<input type="checkbox" id="tracemapcolor_enabled" name="tracemapcolor_enabled" onchange="updateTracemapColorVisibility()" />
+								<span data-i18n="tracemapcolor">Custom Tracemap Color</span>
+							</label>
+							<p class="fieldDesc" data-i18n-desc="tracemapcolor_desc"></p>
+						</div>
+
+						<div class="formField" id="tracemapColorRow" hidden>
+							<label for="tracemapcolor">Color</label>
+							<input type="color" id="tracemapcolor" name="tracemapcolor" value="#00ffff" />
+						</div>
 					</div>
 
 					<div id="settingsBtns">
@@ -81,15 +229,15 @@
 				<progress id="progressBar" value="0" max="100"></progress>
 				<span id="etaText"></span>
 				<div id="outputTabs">
-					<button id="videotabbutton" class="tab" data-tab="video" onclick="switchTab(this)" data-i18n="tab_video">Video</button>
-					<button class="tab" data-tab="csv" onclick="switchTab(this)" data-i18n="tab_csv">CSV</button>
-					<button class="tab" data-tab="summary" onclick="switchTab(this)" data-i18n="tab_summary">Summary</button>
-					<button class="tab" data-tab="tracemap" onclick="switchTab(this)" data-i18n="tab_tracemap">Tracemap</button>
-					<button class="tab" data-tab="heatmap" onclick="switchTab(this)" data-i18n="tab_heatmap">Heatmap</button>
+					<button id="videotabbutton" class="tab" data-tab="video" onclick="switchTab(this)" data-i18n="tab_video" disabled>Video</button>
+					<button class="tab" data-tab="csv" onclick="switchTab(this)" data-i18n="tab_csv" disabled>CSV</button>
+					<button class="tab" data-tab="summary" onclick="switchTab(this)" data-i18n="tab_summary" disabled>Summary</button>
+					<button class="tab" data-tab="tracemap" onclick="switchTab(this)" data-i18n="tab_tracemap" disabled>Tracemap</button>
+					<button class="tab" data-tab="heatmap" onclick="switchTab(this)" data-i18n="tab_heatmap" disabled>Heatmap</button>
 				</div>
 			</div>
 
-			<div id="outputArea">
+			<div id="outputArea" class="outputLocked">
 				<div id="tabVideo" class="tabContent" hidden>
 					<video id="outputVideo" controls></video>
 				</div>
@@ -99,11 +247,11 @@
 				<div id="tabSummary" class="tabContent" hidden>
 					<pre id="summaryText"></pre>
 				</div>
-                <div id="tabTracemap" class="tabContent" hidden>
-					<pre id="tracemap"></pre>
+				<div id="tabTracemap" class="tabContent" hidden>
+					<div id="tracemap"></div>
 				</div>
-                <div id="tabHeatmap" class="tabContent" hidden>
-					<pre id="heatmap"></pre>
+				<div id="tabHeatmap" class="tabContent" hidden>
+					<div id="heatmap"></div>
 				</div>
 			</div>
 		</div>

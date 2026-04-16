@@ -31,8 +31,6 @@ body {
 	overflow: hidden;
 }
 
-/* ── Top Bar ── */
-
 #topBar {
 	display: flex;
 	align-items: center;
@@ -54,8 +52,6 @@ body {
 	align-items: center;
 	gap: 10px;
 }
-
-/* ── Lang Dropdown ── */
 
 .dropdown {
 	position: relative;
@@ -126,8 +122,6 @@ body {
 	flex-shrink: 0;
 }
 
-/* ── Version & Settings ── */
-
 #version {
 	font-size: 12px;
 	color: var(--text-muted);
@@ -152,8 +146,6 @@ body {
 #settingsBtn:hover {
 	background: var(--surface2);
 }
-
-/* ── Buttons ── */
 
 button {
 	background: var(--surface2);
@@ -206,8 +198,6 @@ button:disabled {
 	background: var(--surface2);
 }
 
-/* ── Inputs ── */
-
 input[type="number"],
 input[type="text"] {
 	background: var(--bg);
@@ -232,8 +222,6 @@ input[type="checkbox"] {
 	margin-top: 0;
 	accent-color: var(--accent);
 }
-
-/* ── Settings Overlay ── */
 
 #settingsOverlay {
 	position: fixed;
@@ -323,8 +311,6 @@ label {
 	border-top: 1px solid var(--border);
 }
 
-/* ── App Body ── */
-
 #appBody {
 	flex: 1;
 	display: flex;
@@ -334,8 +320,6 @@ label {
 	overflow: hidden;
 	min-height: 0;
 }
-
-/* ── Row 1: file + time + radius ── */
 
 #row1 {
 	display: flex;
@@ -372,8 +356,6 @@ label {
 	padding: 4px 8px;
 	font-size: 12px;
 }
-
-/* ── Row 2: run + cancel + progress + tabs ── */
 
 #row2 {
 	display: flex;
@@ -442,8 +424,6 @@ progress {
 	color: var(--text);
 	border: 1px solid var(--border);
 }
-
-/* ── Output Area ── */
 
 #outputArea {
 	flex: 1;
@@ -524,10 +504,83 @@ progress {
 	height: 100%;
 }
 
-#heatmap, #tracemap {
-    width: 100%;
-    height: 100%;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
+#heatmap,
+#tracemap {
+	width: 100%;
+	height: 100%;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+#outputArea.outputLocked {
+	pointer-events: none;
+	opacity: 0.35;
+	user-select: none;
+}
+
+#outputTabs .tab:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+.fieldDesc {
+	margin: 2px 0 6px 0;
+	font-size: 0.75rem;
+	color: #888;
+	line-height: 1.4;
+}
+
+.sectionNote {
+	margin: -6px 0 10px 0;
+	font-size: 0.75rem;
+	color: #888;
+	font-style: italic;
+}
+
+.formField {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.formField label {
+	font-size: 0.85rem;
+	font-weight: 500;
+}
+
+.formField input[type="number"],
+.formField input[type="text"] {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.formFieldCheck {
+	justify-content: flex-start;
+}
+
+.checkLabel {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	cursor: pointer;
+	font-size: 0.85rem;
+	font-weight: 500;
+}
+
+.checkLabel input[type="checkbox"] {
+	width: 15px;
+	height: 15px;
+	flex-shrink: 0;
+}
+
+input[type="color"] {
+	width: 48px;
+	height: 32px;
+	padding: 2px;
+	border: 1px solid #444;
+	border-radius: 4px;
+	background: none;
+	cursor: pointer;
 }

@@ -1605,6 +1605,11 @@ def main():
         print("\n" + "\n".join(lines))
 
     if cfg["app_mode"]:
+        def fmt_pt_list(pt):
+            if pt is None:
+                return None
+            return f"{pt[0]},{pt[1]}"
+
         out = {
             "done":             True,
             "video_out":        str(video_out),
@@ -1612,6 +1617,14 @@ def main():
             "summary_out":      str(summary_path),
             "tracemap_out":     str(tracemap_path),
             "heatmap_out":      str(heatmap_path),
+            "pool_west":        fmt_pt_list(cfg.get("pool_west")),
+            "pool_north":       fmt_pt_list(cfg.get("pool_north")),
+            "pool_east":        fmt_pt_list(cfg.get("pool_east")),
+            "pool_south":       fmt_pt_list(cfg.get("pool_south")),
+            "platform_nw":      fmt_pt_list(cfg.get("platform_nw")),
+            "platform_ne":      fmt_pt_list(cfg.get("platform_ne")),
+            "platform_se":      fmt_pt_list(cfg.get("platform_se")),
+            "platform_sw":      fmt_pt_list(cfg.get("platform_sw")),
             "total_dist_cm":    round(total_dist_cm, 2),
             "total_frames":     frame_idx,
             "detected":         detected,

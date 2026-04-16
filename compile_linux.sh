@@ -4,9 +4,6 @@ set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_VERSION="3.12"
-SIDECAR_NAME="main"
-TARGET_TRIPLE="x86_64-unknown-linux-gnu"
-SIDECAR_DEST="src-tauri/bin/${SIDECAR_NAME}-${TARGET_TRIPLE}"
 
 cd "$PROJECT_ROOT"
 
@@ -98,16 +95,16 @@ build_python_sidecar() {
 
     mkdir -p src-tauri/bin
 
-    if [ -f "${SIDECAR_NAME}.bin" ]; then
-        mv "${SIDECAR_NAME}.bin" "$SIDECAR_DEST"
-    elif [ -f "${SIDECAR_NAME}" ]; then
-        mv "${SIDECAR_NAME}" "$SIDECAR_DEST"
+    if [ -f "main.bin" ]; then
+        mv "main.bin" "src-tauri/bin/main-x86_64-unknown-linux-gnu"
+    elif [ -f "main" ]; then
+        mv "main" "src-tauri/bin/main-x86_64-unknown-linux-gnu"
     else
         echo "Python sidecar output not found"
         exit 1
     fi
 
-    chmod +x "$SIDECAR_DEST"
+    chmod +x "src-tauri/bin/main-x86_64-unknown-linux-gnu"
 }
 
 build_tauri() {

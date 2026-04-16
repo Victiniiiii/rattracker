@@ -69,202 +69,241 @@ NAMED_COLORS = {
 
 STRINGS = {
     "en": {
-        "calib_step":           "Step {step}/4 -- Click on the {cardinal} point of the pool edge",
-        "calib_redo":           "Press  R  to redo all points   |   ESC to abort",
-        "calib_confirm":        "All 4 points set -- press ENTER to confirm or R to redo",
-        "calib_abort":          "Press  ESC  to abort without saving",
-        "calib_post_confirm":   "ENTER  -->  Confirm all 8 points",
-        "calib_pool_done":      "Pool done! Now click the {corner} platform corner (clockwise)",
-        "calib_all_done":       "All 8 points set -- press ENTER to confirm or R to redo all",
-        "confirm_title":        "Saved pool coordinates found -- confirm or repick",
-        "confirm_hint":         "ENTER  -->  Continue with these coordinates     ESC  -->  Repick",
-        "platform_step":        "Platform Step {step}/4 -- Click the {corner} corner (clockwise)",
-        "platform_redo":        "Press  R  to redo all points   |   ESC to skip platform",
-        "platform_confirm":     "All 4 corners set -- press ENTER to confirm or R to redo",
-        "platform_skip":        "ESC  -->  skip platform",
-        "platform_confirm_title":"Saved platform coordinates found -- confirm or repick",
-        "platform_confirm_hint":"ENTER  -->  Continue with these coordinates     ESC  -->  Repick",
-        "status_detected":      "DETECTED",
-        "status_missing":       "MISSING",
-        "hud_frame":            "Frame: {frame}   t = {time:.2f}s",
-        "hud_position":         "Position: {pos}",
-        "hud_dist":             "Dist: {dist}",
-        "hud_platform_exits":   "Platform exits: {n}",
-        "leaderboard_title":    "QUADRANT LEADERBOARD",
-        "cardinal_west":        "WEST",
-        "cardinal_north":       "NORTH",
-        "cardinal_east":        "EAST",
-        "cardinal_south":       "SOUTH",
-        "summary_video":        "Video           : {v}",
-        "summary_res":          "Resolution      : {w}x{h}",
-        "summary_frames":       "Total frames    : {n}",
-        "summary_fps":          "FPS             : {fps:.2f}",
-        "summary_duration":     "Duration (s)    : {d:.2f}",
-        "summary_start":        "Start time (s)  : {v}",
-        "summary_end":          "End time (s)    : {v}",
-        "summary_detected":     "Detected frames : {n}",
-        "summary_interp":       "Interpolated    : {n}",
-        "summary_missing":      "Missing (no pos): {n}",
-        "summary_radius":       "Pool radius     : {r} cm",
-        "summary_scale_x":      "Scale X         : {s:.4f} cm/px  (horizontal)",
-        "summary_scale_y":      "Scale Y         : {s:.4f} cm/px  (vertical)",
-        "summary_dist_px":      "Total distance  : {d:.2f} px",
-        "summary_dist_cm":      "Total distance  : {d:.2f} cm",
-        "summary_pairs":        "  (over {n} consecutive frame pairs)",
-        "summary_quad_hdr":     "-- Quadrant Analysis (sorted by time spent) --",
-        "summary_col_q":        "Quadrant",
-        "summary_col_t":        "Time (s)",
-        "summary_col_tp":       "Time (%)",
-        "summary_col_d":        "Dist (cm)",
-        "summary_col_dp":       "Dist (%)",
-        "summary_col_exits":    "Exits",
-        "summary_total":        "TOTAL",
-        "summary_pool_hdr":     "-- Pool Calibration Points --",
-        "summary_pool_w":       "Pool West       : {v}",
-        "summary_pool_n":       "Pool North      : {v}",
-        "summary_pool_e":       "Pool East       : {v}",
-        "summary_pool_s":       "Pool South      : {v}",
-        "summary_platform_hdr": "-- Platform Calibration Points --",
-        "summary_platform_nw":  "Platform NW     : {v}",
-        "summary_platform_ne":  "Platform NE     : {v}",
-        "summary_platform_se":  "Platform SE     : {v}",
-        "summary_platform_sw":  "Platform SW     : {v}",
-        "summary_platform_exits":"Platform exits  : {n}",
-        "summary_quad_exits_hdr":"-- Quadrant Exits --",
-        "summary_quad_exit":    "{q} exits       : {n}",
-        "summary_rerun":        "-- Re-run Command --",
+        "calib_step":               "Step {step}/4 -- Click on the {cardinal} point of the pool edge",
+        "calib_redo":               "Press  R  to redo all points   |   ESC to abort",
+        "calib_confirm":            "All 4 points set -- press ENTER to confirm or R to redo",
+        "calib_abort":              "Press  ESC  to abort without saving",
+        "calib_post_confirm":       "ENTER  -->  Confirm all 8 points",
+        "calib_pool_done":          "Pool done! Now click the {corner} platform corner (clockwise)",
+        "calib_all_done":           "All 8 points set -- press ENTER to confirm or R to redo all",
+        "confirm_title":            "Saved pool coordinates found -- confirm or repick",
+        "confirm_hint":             "ENTER  -->  Continue with these coordinates     ESC  -->  Repick",
+        "platform_step":            "Platform Step {step}/4 -- Click the {corner} corner (clockwise)",
+        "platform_redo":            "Press  R  to redo all points   |   ESC to skip platform",
+        "platform_confirm":         "All 4 corners set -- press ENTER to confirm or R to redo",
+        "platform_skip":            "ESC  -->  skip platform",
+        "platform_confirm_title":   "Saved platform coordinates found -- confirm or repick",
+        "platform_confirm_hint":    "ENTER  -->  Continue with these coordinates     ESC  -->  Repick",
+        "status_detected":          "DETECTED",
+        "status_missing":           "MISSING",
+        "hud_frame":                "Frame: {frame}   t = {time:.2f}s",
+        "hud_position":             "Position: {pos}",
+        "hud_dist":                 "Dist: {dist}",
+        "hud_platform_exits":       "Platform exits: {n}",
+        "hud_paraplatform":         "ParaPlatform  T:{t:.1f}s D:{d:.1f}cm X:{x}",
+        "hud_latency_done":         "Latency: {t:.2f}s / {d:.2f}cm",
+        "hud_latency_pending":      "Latency: tracking...",
+        "leaderboard_title":        "QUADRANT LEADERBOARD",
+        "cardinal_west":            "WEST",
+        "cardinal_north":           "NORTH",
+        "cardinal_east":            "EAST",
+        "cardinal_south":           "SOUTH",
+        "summary_video":            "Video           : {v}",
+        "summary_res":              "Resolution      : {w}x{h}",
+        "summary_frames":           "Total frames    : {n}",
+        "summary_fps":              "FPS             : {fps:.2f}",
+        "summary_duration":         "Duration (s)    : {d:.2f}",
+        "summary_start":            "Start time (s)  : {v}",
+        "summary_end":              "End time (s)    : {v}",
+        "summary_detected":         "Detected frames : {n}",
+        "summary_interp":           "Interpolated    : {n}",
+        "summary_missing":          "Missing (no pos): {n}",
+        "summary_radius":           "Pool radius     : {r} cm",
+        "summary_scale_x":          "Scale X         : {s:.4f} cm/px  (horizontal)",
+        "summary_scale_y":          "Scale Y         : {s:.4f} cm/px  (vertical)",
+        "summary_dist_px":          "Total distance  : {d:.2f} px",
+        "summary_dist_cm":          "Total distance  : {d:.2f} cm",
+        "summary_pairs":            "  (over {n} consecutive frame pairs)",
+        "summary_quad_hdr":         "-- Quadrant Analysis (sorted by time spent) --",
+        "summary_col_q":            "Quadrant",
+        "summary_col_t":            "Time (s)",
+        "summary_col_tp":           "Time (%)",
+        "summary_col_d":            "Dist (cm)",
+        "summary_col_dp":           "Dist (%)",
+        "summary_col_exits":        "Exits",
+        "summary_total":            "TOTAL",
+        "summary_pool_hdr":         "-- Pool Calibration Points --",
+        "summary_pool_w":           "Pool West       : {v}",
+        "summary_pool_n":           "Pool North      : {v}",
+        "summary_pool_e":           "Pool East       : {v}",
+        "summary_pool_s":           "Pool South      : {v}",
+        "summary_platform_hdr":     "-- Platform Calibration Points --",
+        "summary_platform_nw":      "Platform NW     : {v}",
+        "summary_platform_ne":      "Platform NE     : {v}",
+        "summary_platform_se":      "Platform SE     : {v}",
+        "summary_platform_sw":      "Platform SW     : {v}",
+        "summary_platform_exits":   "Platform exits  : {n}",
+        "summary_quad_exits_hdr":   "-- Quadrant Exits --",
+        "summary_quad_exit":        "{q} exits       : {n}",
+        "summary_paraplatform_hdr": "-- ParaPlatform Analysis (scale: {s}x area / {sl:.2f}x side) --",
+        "summary_paraplatform_t":   "ParaPlatform time  : {t:.2f} s  ({p:.1f}% of total)",
+        "summary_paraplatform_d":   "ParaPlatform dist  : {d:.2f} cm ({p:.1f}% of total)",
+        "summary_paraplatform_x":   "ParaPlatform exits : {n}",
+        "summary_proximity_hdr":    "-- Proximity to Platform --",
+        "summary_proximity_avg":    "Avg dist to center : {d:.2f} cm  (over {n} frames)",
+        "summary_latency_hdr":      "-- Latency to Platform --",
+        "summary_latency_t":        "Time to first entry: {t:.2f} s",
+        "summary_latency_d":        "Dist to first entry: {d:.2f} cm",
+        "summary_latency_none":     "Rat never entered platform during session",
+        "summary_rerun":            "-- Re-run Command --",
     },
     "fr": {
-        "calib_step":           "Etape {step}/4 -- Cliquez sur le point {cardinal} du bord du bassin",
-        "calib_redo":           "Appuyez sur  R  pour recommencer   |   ESC pour abandonner",
-        "calib_confirm":        "4 points definis -- ENTREE pour confirmer ou R pour recommencer",
-        "calib_abort":          "ESC  pour abandonner sans sauvegarder",
-        "calib_post_confirm":   "ENTREE  -->  Confirmer les 8 points",
-        "calib_pool_done":      "Bassin OK! Cliquez le coin {corner} de la plateforme (sens horaire)",
-        "calib_all_done":       "8 points definis -- ENTREE pour confirmer ou R pour tout recommencer",
-        "confirm_title":        "Coordonnees du bassin trouvees -- confirmer ou reprendre",
-        "confirm_hint":         "ENTREE  -->  Continuer avec ces coordonnees     ESC  -->  Reprendre",
-        "platform_step":        "Plateforme etape {step}/4 -- Cliquez le coin {corner} (sens horaire)",
-        "platform_redo":        "Appuyez sur  R  pour recommencer   |   ESC pour ignorer la plateforme",
-        "platform_confirm":     "4 coins definis -- ENTREE pour confirmer ou R pour recommencer",
-        "platform_skip":        "ESC  -->  ignorer la plateforme",
-        "platform_confirm_title":"Coordonnees de plateforme trouvees -- confirmer ou reprendre",
-        "platform_confirm_hint":"ENTREE  -->  Continuer avec ces coordonnees     ESC  -->  Reprendre",
-        "status_detected":      "DETECTE",
-        "status_missing":       "MANQUANT",
-        "hud_frame":            "Image: {frame}   t = {time:.2f}s",
-        "hud_position":         "Position: {pos}",
-        "hud_dist":             "Dist: {dist}",
-        "hud_platform_exits":   "Sorties plateforme: {n}",
-        "leaderboard_title":    "CLASSEMENT QUADRANTS",
-        "cardinal_west":        "OUEST",
-        "cardinal_north":       "NORD",
-        "cardinal_east":        "EST",
-        "cardinal_south":       "SUD",
-        "summary_video":        "Video           : {v}",
-        "summary_res":          "Resolution      : {w}x{h}",
-        "summary_frames":       "Images totales  : {n}",
-        "summary_fps":          "FPS             : {fps:.2f}",
-        "summary_duration":     "Duree (s)       : {d:.2f}",
-        "summary_start":        "Debut (s)       : {v}",
-        "summary_end":          "Fin (s)         : {v}",
-        "summary_detected":     "Images detectees: {n}",
-        "summary_interp":       "Interpolees     : {n}",
-        "summary_missing":      "Manquantes      : {n}",
-        "summary_radius":       "Rayon bassin    : {r} cm",
-        "summary_scale_x":      "Echelle X       : {s:.4f} cm/px  (horizontal)",
-        "summary_scale_y":      "Echelle Y       : {s:.4f} cm/px  (vertical)",
-        "summary_dist_px":      "Distance totale : {d:.2f} px",
-        "summary_dist_cm":      "Distance totale : {d:.2f} cm",
-        "summary_pairs":        "  (sur {n} paires d'images consecutives)",
-        "summary_quad_hdr":     "-- Analyse par quadrant (triee par temps passe) --",
-        "summary_col_q":        "Quadrant",
-        "summary_col_t":        "Temps (s)",
-        "summary_col_tp":       "Temps (%)",
-        "summary_col_d":        "Dist (cm)",
-        "summary_col_dp":       "Dist (%)",
-        "summary_col_exits":    "Sorties",
-        "summary_total":        "TOTAL",
-        "summary_pool_hdr":     "-- Points de calibration du bassin --",
-        "summary_pool_w":       "Bassin Ouest    : {v}",
-        "summary_pool_n":       "Bassin Nord     : {v}",
-        "summary_pool_e":       "Bassin Est      : {v}",
-        "summary_pool_s":       "Bassin Sud      : {v}",
-        "summary_platform_hdr": "-- Points de calibration de la plateforme --",
-        "summary_platform_nw":  "Plateforme NO   : {v}",
-        "summary_platform_ne":  "Plateforme NE   : {v}",
-        "summary_platform_se":  "Plateforme SE   : {v}",
-        "summary_platform_sw":  "Plateforme SO   : {v}",
-        "summary_platform_exits":"Sorties plateau : {n}",
-        "summary_quad_exits_hdr":"-- Sorties par quadrant --",
-        "summary_quad_exit":    "Sorties {q}     : {n}",
-        "summary_rerun":        "-- Commande de relance --",
+        "calib_step":               "Etape {step}/4 -- Cliquez sur le point {cardinal} du bord du bassin",
+        "calib_redo":               "Appuyez sur  R  pour recommencer   |   ESC pour abandonner",
+        "calib_confirm":            "4 points definis -- ENTREE pour confirmer ou R pour recommencer",
+        "calib_abort":              "ESC  pour abandonner sans sauvegarder",
+        "calib_post_confirm":       "ENTREE  -->  Confirmer les 8 points",
+        "calib_pool_done":          "Bassin OK! Cliquez le coin {corner} de la plateforme (sens horaire)",
+        "calib_all_done":           "8 points definis -- ENTREE pour confirmer ou R pour tout recommencer",
+        "confirm_title":            "Coordonnees du bassin trouvees -- confirmer ou reprendre",
+        "confirm_hint":             "ENTREE  -->  Continuer avec ces coordonnees     ESC  -->  Reprendre",
+        "platform_step":            "Plateforme etape {step}/4 -- Cliquez le coin {corner} (sens horaire)",
+        "platform_redo":            "Appuyez sur  R  pour recommencer   |   ESC pour ignorer la plateforme",
+        "platform_confirm":         "4 coins definis -- ENTREE pour confirmer ou R pour recommencer",
+        "platform_skip":            "ESC  -->  ignorer la plateforme",
+        "platform_confirm_title":   "Coordonnees de plateforme trouvees -- confirmer ou reprendre",
+        "platform_confirm_hint":    "ENTREE  -->  Continuer avec ces coordonnees     ESC  -->  Reprendre",
+        "status_detected":          "DETECTE",
+        "status_missing":           "MANQUANT",
+        "hud_frame":                "Image: {frame}   t = {time:.2f}s",
+        "hud_position":             "Position: {pos}",
+        "hud_dist":                 "Dist: {dist}",
+        "hud_platform_exits":       "Sorties plateforme: {n}",
+        "hud_paraplatform":         "ParaPlateforme T:{t:.1f}s D:{d:.1f}cm X:{x}",
+        "hud_latency_done":         "Latence: {t:.2f}s / {d:.2f}cm",
+        "hud_latency_pending":      "Latence: en cours...",
+        "leaderboard_title":        "CLASSEMENT QUADRANTS",
+        "cardinal_west":            "OUEST",
+        "cardinal_north":           "NORD",
+        "cardinal_east":            "EST",
+        "cardinal_south":           "SUD",
+        "summary_video":            "Video           : {v}",
+        "summary_res":              "Resolution      : {w}x{h}",
+        "summary_frames":           "Images totales  : {n}",
+        "summary_fps":              "FPS             : {fps:.2f}",
+        "summary_duration":         "Duree (s)       : {d:.2f}",
+        "summary_start":            "Debut (s)       : {v}",
+        "summary_end":              "Fin (s)         : {v}",
+        "summary_detected":         "Images detectees: {n}",
+        "summary_interp":           "Interpolees     : {n}",
+        "summary_missing":          "Manquantes      : {n}",
+        "summary_radius":           "Rayon bassin    : {r} cm",
+        "summary_scale_x":          "Echelle X       : {s:.4f} cm/px  (horizontal)",
+        "summary_scale_y":          "Echelle Y       : {s:.4f} cm/px  (vertical)",
+        "summary_dist_px":          "Distance totale : {d:.2f} px",
+        "summary_dist_cm":          "Distance totale : {d:.2f} cm",
+        "summary_pairs":            "  (sur {n} paires d'images consecutives)",
+        "summary_quad_hdr":         "-- Analyse par quadrant (triee par temps passe) --",
+        "summary_col_q":            "Quadrant",
+        "summary_col_t":            "Temps (s)",
+        "summary_col_tp":           "Temps (%)",
+        "summary_col_d":            "Dist (cm)",
+        "summary_col_dp":           "Dist (%)",
+        "summary_col_exits":        "Sorties",
+        "summary_total":            "TOTAL",
+        "summary_pool_hdr":         "-- Points de calibration du bassin --",
+        "summary_pool_w":           "Bassin Ouest    : {v}",
+        "summary_pool_n":           "Bassin Nord     : {v}",
+        "summary_pool_e":           "Bassin Est      : {v}",
+        "summary_pool_s":           "Bassin Sud      : {v}",
+        "summary_platform_hdr":     "-- Points de calibration de la plateforme --",
+        "summary_platform_nw":      "Plateforme NO   : {v}",
+        "summary_platform_ne":      "Plateforme NE   : {v}",
+        "summary_platform_se":      "Plateforme SE   : {v}",
+        "summary_platform_sw":      "Plateforme SO   : {v}",
+        "summary_platform_exits":   "Sorties plateau : {n}",
+        "summary_quad_exits_hdr":   "-- Sorties par quadrant --",
+        "summary_quad_exit":        "Sorties {q}     : {n}",
+        "summary_paraplatform_hdr": "-- Analyse ParaPlateforme (echelle: {s}x aire / {sl:.2f}x cote) --",
+        "summary_paraplatform_t":   "Temps ParaPlat  : {t:.2f} s  ({p:.1f}% du total)",
+        "summary_paraplatform_d":   "Dist ParaPlat   : {d:.2f} cm ({p:.1f}% du total)",
+        "summary_paraplatform_x":   "Sorties ParaPlat: {n}",
+        "summary_proximity_hdr":    "-- Proximite de la plateforme --",
+        "summary_proximity_avg":    "Dist moy centre : {d:.2f} cm  (sur {n} images)",
+        "summary_latency_hdr":      "-- Latence vers la plateforme --",
+        "summary_latency_t":        "Temps 1ere entree: {t:.2f} s",
+        "summary_latency_d":        "Dist 1ere entree : {d:.2f} cm",
+        "summary_latency_none":     "Le rat n'est jamais entre sur la plateforme",
+        "summary_rerun":            "-- Commande de relance --",
     },
     "tr": {
-        "calib_step":           "Adim {step}/4 -- Havuz kenarindaki {cardinal} noktasina tiklayin",
-        "calib_redo":           "R  tum noktalari sifirlar   |   ESC iptal eder",
-        "calib_confirm":        "4 nokta belirlendi -- ENTER ile onayla veya R ile yeniden secim yap",
-        "calib_abort":          "ESC -->  kaydetmeden cik",
-        "calib_post_confirm":   "ENTER  -->  8 noktanin hepsini onayla",
-        "calib_pool_done":      "Havuz tamam! {corner} platform kosesine tiklayin (saat yonunde)",
-        "calib_all_done":       "8 nokta belirlendi -- ENTER ile onayla veya R ile bastan yap",
-        "confirm_title":        "Kayitli havuz koordinatlari bulundu -- onayla veya yeniden sec",
-        "confirm_hint":         "ENTER  -->  Bu koordinatlarla devam et     ESC  -->  Yeniden sec",
-        "platform_step":        "Platform Adim {step}/4 -- {corner} kosesine tiklayin (saat yonunde)",
-        "platform_redo":        "R  tum noktalari sifirlar   |   ESC platformu atla",
-        "platform_confirm":     "4 kose belirlendi -- ENTER ile onayla veya R ile yeniden yap",
-        "platform_skip":        "ESC  -->  platformu atla",
-        "platform_confirm_title":"Kayitli platform koordinatlari bulundu -- onayla veya yeniden sec",
-        "platform_confirm_hint":"ENTER  -->  Bu koordinatlarla devam et     ESC  -->  Yeniden sec",
-        "status_detected":      "ALGILANDI",
-        "status_missing":       "KAYIP",
-        "hud_frame":            "Kare: {frame}   t = {time:.2f}s",
-        "hud_position":         "Konum: {pos}",
-        "hud_dist":             "Dist: {dist}",
-        "hud_platform_exits":   "Platform cikisi: {n}",
-        "leaderboard_title":    "CEYREK SIRALAMASI",
-        "cardinal_west":        "BATI",
-        "cardinal_north":       "KUZEY",
-        "cardinal_east":        "DOGU",
-        "cardinal_south":       "GUNEY",
-        "summary_video":        "Video           : {v}",
-        "summary_res":          "Cozunurluk      : {w}x{h}",
-        "summary_frames":       "Toplam kare     : {n}",
-        "summary_fps":          "FPS             : {fps:.2f}",
-        "summary_duration":     "Sure (s)        : {d:.2f}",
-        "summary_start":        "Baslangic (s)   : {v}",
-        "summary_end":          "Bitis (s)       : {v}",
-        "summary_detected":     "Algilanan kare  : {n}",
-        "summary_interp":       "Enterpolasyon   : {n}",
-        "summary_missing":      "Eksik (konum yok): {n}",
-        "summary_radius":       "Havuz yaricapi  : {r} cm",
-        "summary_scale_x":      "Olcek X         : {s:.4f} cm/px  (yatay)",
-        "summary_scale_y":      "Olcek Y         : {s:.4f} cm/px  (dikey)",
-        "summary_dist_px":      "Toplam mesafe   : {d:.2f} px",
-        "summary_dist_cm":      "Toplam mesafe   : {d:.2f} cm",
-        "summary_pairs":        "  ({n} ardisik kare cifti uzerinden)",
-        "summary_quad_hdr":     "-- Ceyrek Analizi (harcanan zamana gore siralanmis) --",
-        "summary_col_q":        "Ceyrek",
-        "summary_col_t":        "Sure (s)",
-        "summary_col_tp":       "Sure (%)",
-        "summary_col_d":        "Dist (cm)",
-        "summary_col_dp":       "Dist (%)",
-        "summary_col_exits":    "Cikis",
-        "summary_total":        "TOPLAM",
-        "summary_pool_hdr":     "-- Havuz Kalibrasyon Noktalari --",
-        "summary_pool_w":       "Havuz Bati      : {v}",
-        "summary_pool_n":       "Havuz Kuzey     : {v}",
-        "summary_pool_e":       "Havuz Dogu      : {v}",
-        "summary_pool_s":       "Havuz Guney     : {v}",
-        "summary_platform_hdr": "-- Platform Kalibrasyon Noktalari --",
-        "summary_platform_nw":  "Platform KB     : {v}",
-        "summary_platform_ne":  "Platform KD     : {v}",
-        "summary_platform_se":  "Platform GD     : {v}",
-        "summary_platform_sw":  "Platform GB     : {v}",
-        "summary_platform_exits":"Platform cikisi : {n}",
-        "summary_quad_exits_hdr":"-- Ceyrek Cikislari --",
-        "summary_quad_exit":    "{q} cikisi      : {n}",
-        "summary_rerun":        "-- Yeniden calistirma Komutu --",
+        "calib_step":               "Adim {step}/4 -- Havuz kenarindaki {cardinal} noktasina tiklayin",
+        "calib_redo":               "R  tum noktalari sifirlar   |   ESC iptal eder",
+        "calib_confirm":            "4 nokta belirlendi -- ENTER ile onayla veya R ile yeniden secim yap",
+        "calib_abort":              "ESC -->  kaydetmeden cik",
+        "calib_post_confirm":       "ENTER  -->  8 noktanin hepsini onayla",
+        "calib_pool_done":          "Havuz tamam! {corner} platform kosesine tiklayin (saat yonunde)",
+        "calib_all_done":           "8 nokta belirlendi -- ENTER ile onayla veya R ile bastan yap",
+        "confirm_title":            "Kayitli havuz koordinatlari bulundu -- onayla veya yeniden sec",
+        "confirm_hint":             "ENTER  -->  Bu koordinatlarla devam et     ESC  -->  Yeniden sec",
+        "platform_step":            "Platform Adim {step}/4 -- {corner} kosesine tiklayin (saat yonunde)",
+        "platform_redo":            "R  tum noktalari sifirlar   |   ESC platformu atla",
+        "platform_confirm":         "4 kose belirlendi -- ENTER ile onayla veya R ile yeniden yap",
+        "platform_skip":            "ESC  -->  platformu atla",
+        "platform_confirm_title":   "Kayitli platform koordinatlari bulundu -- onayla veya yeniden sec",
+        "platform_confirm_hint":    "ENTER  -->  Bu koordinatlarla devam et     ESC  -->  Yeniden sec",
+        "status_detected":          "ALGILANDI",
+        "status_missing":           "KAYIP",
+        "hud_frame":                "Kare: {frame}   t = {time:.2f}s",
+        "hud_position":             "Konum: {pos}",
+        "hud_dist":                 "Dist: {dist}",
+        "hud_platform_exits":       "Platform cikisi: {n}",
+        "hud_paraplatform":         "ParaPlatform  T:{t:.1f}s D:{d:.1f}cm X:{x}",
+        "hud_latency_done":         "Gecikme: {t:.2f}s / {d:.2f}cm",
+        "hud_latency_pending":      "Gecikme: olculuyor...",
+        "leaderboard_title":        "CEYREK SIRALAMASI",
+        "cardinal_west":            "BATI",
+        "cardinal_north":           "KUZEY",
+        "cardinal_east":            "DOGU",
+        "cardinal_south":           "GUNEY",
+        "summary_video":            "Video           : {v}",
+        "summary_res":              "Cozunurluk      : {w}x{h}",
+        "summary_frames":           "Toplam kare     : {n}",
+        "summary_fps":              "FPS             : {fps:.2f}",
+        "summary_duration":         "Sure (s)        : {d:.2f}",
+        "summary_start":            "Baslangic (s)   : {v}",
+        "summary_end":              "Bitis (s)       : {v}",
+        "summary_detected":         "Algilanan kare  : {n}",
+        "summary_interp":           "Enterpolasyon   : {n}",
+        "summary_missing":          "Eksik (konum yok): {n}",
+        "summary_radius":           "Havuz yaricapi  : {r} cm",
+        "summary_scale_x":          "Olcek X         : {s:.4f} cm/px  (yatay)",
+        "summary_scale_y":          "Olcek Y         : {s:.4f} cm/px  (dikey)",
+        "summary_dist_px":          "Toplam mesafe   : {d:.2f} px",
+        "summary_dist_cm":          "Toplam mesafe   : {d:.2f} cm",
+        "summary_pairs":            "  ({n} ardisik kare cifti uzerinden)",
+        "summary_quad_hdr":         "-- Ceyrek Analizi (harcanan zamana gore siralanmis) --",
+        "summary_col_q":            "Ceyrek",
+        "summary_col_t":            "Sure (s)",
+        "summary_col_tp":           "Sure (%)",
+        "summary_col_d":            "Dist (cm)",
+        "summary_col_dp":           "Dist (%)",
+        "summary_col_exits":        "Cikis",
+        "summary_total":            "TOPLAM",
+        "summary_pool_hdr":         "-- Havuz Kalibrasyon Noktalari --",
+        "summary_pool_w":           "Havuz Bati      : {v}",
+        "summary_pool_n":           "Havuz Kuzey     : {v}",
+        "summary_pool_e":           "Havuz Dogu      : {v}",
+        "summary_pool_s":           "Havuz Guney     : {v}",
+        "summary_platform_hdr":     "-- Platform Kalibrasyon Noktalari --",
+        "summary_platform_nw":      "Platform KB     : {v}",
+        "summary_platform_ne":      "Platform KD     : {v}",
+        "summary_platform_se":      "Platform GD     : {v}",
+        "summary_platform_sw":      "Platform GB     : {v}",
+        "summary_platform_exits":   "Platform cikisi : {n}",
+        "summary_quad_exits_hdr":   "-- Ceyrek Cikislari --",
+        "summary_quad_exit":        "{q} cikisi      : {n}",
+        "summary_paraplatform_hdr": "-- ParaPlatform Analizi (olcek: {s}x alan / {sl:.2f}x kenar) --",
+        "summary_paraplatform_t":   "ParaPlatform sure  : {t:.2f} s  (toplamın %{p:.1f})",
+        "summary_paraplatform_d":   "ParaPlatform mesafe: {d:.2f} cm (toplamın %{p:.1f})",
+        "summary_paraplatform_x":   "ParaPlatform cikis : {n}",
+        "summary_proximity_hdr":    "-- Platform Yakinligi --",
+        "summary_proximity_avg":    "Ort. merkez mesafesi: {d:.2f} cm  ({n} kare)",
+        "summary_latency_hdr":      "-- Platform Gecikmesi --",
+        "summary_latency_t":        "Ilk girise kadar sure: {t:.2f} s",
+        "summary_latency_d":        "Ilk girise kadar mesafe: {d:.2f} cm",
+        "summary_latency_none":     "Sickan hic platforma girmedi",
+        "summary_rerun":            "-- Yeniden calistirma Komutu --",
     },
 }
 
@@ -289,6 +328,14 @@ def parse_tracemap_color(value):
     raise argparse.ArgumentTypeError(
         f"Invalid tracemapcolor '{value}'. Use R,G,B or a name: {', '.join(NAMED_COLORS)}"
     )
+
+def scale_platform_corners(corners, scale):
+    cx = sum(p[0] for p in corners) / 4
+    cy = sum(p[1] for p in corners) / 4
+    return [(cx + (p[0] - cx) * scale, cy + (p[1] - cy) * scale) for p in corners]
+
+def platform_center(corners):
+    return (sum(p[0] for p in corners) / 4, sum(p[1] for p in corners) / 4)
 
 def tracemap(records, first_frame, output_dir, video_path, ts, color=(0, 255, 255)):
     canvas = first_frame.copy()
@@ -362,6 +409,10 @@ def platform_coords_valid(cfg: dict) -> bool:
     return all(cfg.get(k) is not None
                for k in ("platform_nw", "platform_ne", "platform_se", "platform_sw"))
 
+def needs_platform(args) -> bool:
+    return any([args.platformcross, args.paraplatform is not None,
+                args.proximity, args.latency])
+
 def run_calibration(frame: np.ndarray, lang: str, require_platform: bool = False) -> dict | None:
     state = {
         "step": 0,
@@ -381,12 +432,9 @@ def run_calibration(frame: np.ndarray, lang: str, require_platform: bool = False
         "SOUTH": S(lang, "cardinal_south"),
     }
 
-    total_steps = 8 if require_platform else 4
-
     def draw(base):
         img = base.copy()
         draw_transparent_banner(img, 0, 0, frame.shape[1], 70)
-
         if state["phase"] == "pool":
             step = state["step"]
             if step < len(CALIB_STEPS):
@@ -417,31 +465,27 @@ def run_calibration(frame: np.ndarray, lang: str, require_platform: bool = False
                             (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (100, 255, 180), 1)
                 cv2.putText(img, S(lang, "calib_post_confirm"),
                             (12, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 180, 180), 1)
-
         for cardinal, pt in state["pool_points"].items():
             col = CALIB_COLORS[cardinal]
             cv2.circle(img, pt, 7, col, -1)
             cv2.circle(img, pt, 9, (255, 255, 255), 1)
             cv2.putText(img, calib_cardinal_labels[cardinal],
                         (pt[0] + 11, pt[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
-
         if len(state["pool_points"]) == 4:
             p = state["pool_points"]
             result = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
             if result is not None:
-                cx, cy, rx, ry, angle = result
-                cv2.ellipse(img, (cx, cy), (rx, ry), angle, 0, 360, (100, 255, 180), 2)
-                cv2.circle(img, (cx, cy), 5, (100, 255, 180), -1)
+                ecx, ecy, erx, ery, eangle = result
+                cv2.ellipse(img, (ecx, ecy), (erx, ery), eangle, 0, 360, (100, 255, 180), 2)
+                cv2.circle(img, (ecx, ecy), 5, (100, 255, 180), -1)
                 cv2.line(img, p["NORTH"], p["SOUTH"], (100, 255, 180), 1)
                 cv2.line(img, p["WEST"],  p["EAST"],  (100, 255, 180), 1)
-
         for corner, pt in state["platform_points"].items():
             col = PLATFORM_COLORS[corner]
             cv2.circle(img, pt, 7, col, -1)
             cv2.circle(img, pt, 9, (255, 255, 255), 1)
             cv2.putText(img, corner, (pt[0] + 11, pt[1] + 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.52, col, 1)
-
         pts_ordered = [state["platform_points"].get(s[0]) for s in PLATFORM_STEPS if s[0] in state["platform_points"]]
         if len(pts_ordered) >= 2:
             for i in range(len(pts_ordered) - 1):
@@ -450,7 +494,10 @@ def run_calibration(frame: np.ndarray, lang: str, require_platform: bool = False
             corners_ordered = [state["platform_points"][s[0]] for s in PLATFORM_STEPS]
             pts_np = np.array(corners_ordered, dtype=np.int32)
             cv2.polylines(img, [pts_np], isClosed=True, color=(200, 200, 50), thickness=2)
-
+            if require_platform:
+                para_preview = scale_platform_corners(corners_ordered, math.sqrt(4))
+                para_pts_np = np.array([(int(p[0]), int(p[1])) for p in para_preview], dtype=np.int32)
+                cv2.polylines(img, [para_pts_np], isClosed=True, color=(0, 180, 255), thickness=1)
         return img
 
     def on_click(event, x, y, flags, param):
@@ -609,11 +656,11 @@ def confirm_pool_from_args(frame, cfg, lang):
     result = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
     if result is None:
         return False
-    cx, cy, rx, ry, angle = result
+    ecx, ecy, erx, ery, eangle = result
     img = frame.copy()
-    cv2.ellipse(img, (cx, cy), (rx, ry), angle, 0, 360, (100, 255, 180), 2)
-    cv2.circle(img, (cx, cy), 5, (100, 255, 180), -1)
-    cv2.circle(img, (cx, cy), 7, (255, 255, 255), 1)
+    cv2.ellipse(img, (ecx, ecy), (erx, ery), eangle, 0, 360, (100, 255, 180), 2)
+    cv2.circle(img, (ecx, ecy), 5, (100, 255, 180), -1)
+    cv2.circle(img, (ecx, ecy), 7, (255, 255, 255), 1)
     cv2.line(img, p["NORTH"], p["SOUTH"], (100, 255, 180), 1)
     cv2.line(img, p["WEST"],  p["EAST"],  (100, 255, 180), 1)
     for cardinal, pt in p.items():
@@ -808,15 +855,14 @@ def get_platform_edges(platform_corners):
 
 def point_in_platform(pt, platform_corners) -> bool:
     x, y = pt
-    nw, ne, se, sw = platform_corners
-    corners = [nw, ne, se, sw]
+    corners = list(platform_corners)
     n = len(corners)
     inside = False
     px, py = x, y
     j = n - 1
     for i in range(n):
-        xi, yi = corners[i]
-        xj, yj = corners[j]
+        xi, yi = corners[i][0], corners[i][1]
+        xj, yj = corners[j][0], corners[j][1]
         if ((yi > py) != (yj > py)) and (px < (xj - xi) * (py - yi) / (yj - yi + 1e-12) + xi):
             inside = not inside
         j = i
@@ -834,6 +880,14 @@ def segment_crosses_platform_twice(p1, p2, platform_corners) -> bool:
         if not unique_crossings or abs(t - unique_crossings[-1]) > 1e-6:
             unique_crossings.append(t)
     return len(unique_crossings) >= 2
+
+def segment_enters_platform(p1, p2, platform_corners, prev_inside: bool) -> bool:
+    curr_inside = point_in_platform(p2, platform_corners)
+    if not prev_inside and curr_inside:
+        return True
+    if not prev_inside and not curr_inside:
+        return segment_crosses_platform_twice(p1, p2, platform_corners)
+    return False
 
 ## Calculations
 
@@ -875,14 +929,13 @@ def draw_transparent_banner(img, x0, y0, x1, y1, alpha=0.72):
     cv2.rectangle(img, (x0, y0), (x1, y1), (80, 80, 80), 1)
 
 def draw_leaderboard(img, stats, total_time_s, total_dist_cm, lang, quad_exits=None):
-    sorted_q = ["NW", "NE", "SW", "SE"]
+    sorted_q   = ["NW", "NE", "SW", "SE"]
     show_exits = quad_exits is not None
-    panel_w  = 360 if show_exits else 310
-    row_h    = 22
-    pad      = 8
-    n_rows   = len(QUADRANT_NAMES)
-    header_h = 24
-    panel_h  = header_h + n_rows * row_h + pad
+    panel_w    = 360 if show_exits else 310
+    row_h      = 22
+    pad        = 8
+    header_h   = 24
+    panel_h    = header_h + len(QUADRANT_NAMES) * row_h + pad
     x0 = img.shape[1] - panel_w - 8
     y0 = 8
     x1 = x0 + panel_w
@@ -904,8 +957,7 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm, lang, quad_exits=N
         cv2.putText(img, f"T:{t_s:5.1f}s {t_pct:4.1f}%", (x0 + pad + 52, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (220, 220, 220), 1)
         cv2.putText(img, f"D:{d_cm:6.1f}cm {d_pct:4.1f}%", (x0 + pad + 166, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255, 200, 50), 1)
         if show_exits:
-            ex = quad_exits.get(q, 0)
-            cv2.putText(img, f"X:{ex}", (x0 + pad + 298, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (100, 200, 255), 1)
+            cv2.putText(img, f"X:{quad_exits.get(q, 0)}", (x0 + pad + 298, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (100, 200, 255), 1)
 
 ## Rat Detection
 
@@ -1009,6 +1061,12 @@ def build_rerun_command(video_path, args, cfg):
         parts.append("--quadrantcross")
     if args.platformcross:
         parts.append("--platformcross")
+    if args.paraplatform is not None:
+        parts.append(f"--paraplatform {args.paraplatform}")
+    if args.proximity:
+        parts.append("--proximity")
+    if args.latency:
+        parts.append("--latency")
     if args.tracemapcolor is not None:
         parts.append(f"--tracemapcolor {args.tracemapcolor}")
     parts.append(f"--pool_west {fmt_pt(cfg['pool_west'])}")
@@ -1051,13 +1109,16 @@ def main():
     parser.add_argument("--platform_sw",         default=None,   type=str)
     parser.add_argument("--quadrantcross",       default=False,  action="store_true")
     parser.add_argument("--platformcross",       default=False,  action="store_true")
+    parser.add_argument("--paraplatform",        default=None,   type=int,    nargs="?", const=4)
+    parser.add_argument("--proximity",           default=False,  action="store_true")
+    parser.add_argument("--latency",             default=False,  action="store_true")
     parser.add_argument("--tracemapcolor",       default=None,   type=str)
     parser.add_argument("--appmode",             default=False,  action="store_true")
     args = parser.parse_args()
 
-    tracemap_color = parse_tracemap_color(args.tracemapcolor)
-
-    lang = args.language
+    tracemap_color   = parse_tracemap_color(args.tracemapcolor)
+    lang             = args.language
+    require_platform = needs_platform(args)
 
     cfg = {
         "pool_radius_cm":     args.pool_radius_cm,
@@ -1104,23 +1165,23 @@ def main():
     if pool_coords_valid(cfg):
         confirmed = confirm_pool_from_args(first_frame, cfg, lang)
         if not confirmed:
-            result = run_calibration(first_frame, lang, require_platform=args.platformcross)
+            result = run_calibration(first_frame, lang, require_platform=require_platform)
             if result is None:
                 raise RuntimeError("Pool calibration aborted.")
             cfg.update(result)
         else:
-            if args.platformcross:
+            if require_platform:
                 if platform_coords_valid(cfg):
                     plat_confirmed = confirm_platform_from_args(first_frame, cfg, lang)
                     if not plat_confirmed:
                         plat_result = run_platform_calibration(first_frame, lang)
                         if plat_result is None:
-                            raise RuntimeError("Platform calibration aborted (--platformcross requires platform).")
+                            raise RuntimeError("Platform calibration aborted.")
                         cfg.update(plat_result)
                 else:
                     plat_result = run_platform_calibration(first_frame, lang)
                     if plat_result is None:
-                        raise RuntimeError("Platform calibration aborted (--platformcross requires platform).")
+                        raise RuntimeError("Platform calibration aborted.")
                     cfg.update(plat_result)
             else:
                 cfg["platform_nw"] = None
@@ -1128,11 +1189,11 @@ def main():
                 cfg["platform_se"] = None
                 cfg["platform_sw"] = None
     else:
-        result = run_calibration(first_frame, lang, require_platform=args.platformcross)
+        result = run_calibration(first_frame, lang, require_platform=require_platform)
         if result is None:
             raise RuntimeError("Calibration aborted.")
         cfg.update(result)
-        if not args.platformcross:
+        if not require_platform:
             cfg["platform_nw"] = None
             cfg["platform_ne"] = None
             cfg["platform_se"] = None
@@ -1159,19 +1220,38 @@ def main():
     pool      = (cx, cy, rx, ry, angle)
     pool_mask = make_ellipse_mask((frame_h, frame_w), *pool)
 
-    has_platform = args.platformcross and platform_coords_valid(cfg)
+    has_platform = require_platform and platform_coords_valid(cfg)
     platform_corners = None
     if has_platform:
         platform_corners = [cfg["platform_nw"], cfg["platform_ne"],
                             cfg["platform_se"], cfg["platform_sw"]]
 
-    ts           = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
-    output_dir   = video_path.parent
-    video_out    = output_dir / f"{video_path.stem}_{ts}.mp4"
-    csv_path     = output_dir / f"{video_path.stem}_{ts}_coordinates.csv"
-    summary_path = output_dir / f"{video_path.stem}_{ts}_summary.txt"
+    para_scale       = None
+    para_side_scale  = None
+    para_corners     = None
+    para_time_s      = 0.0
+    para_dist_cm     = 0.0
+    para_exits       = 0
+    prev_inside_para = False
+
+    if args.paraplatform is not None and has_platform:
+        para_scale      = args.paraplatform
+        para_side_scale = math.sqrt(para_scale)
+        para_corners    = scale_platform_corners(platform_corners, para_side_scale)
+
+    latency_time_s               = None
+    latency_dist_cm              = None
+    latency_done                 = False
+    latency_dist_acc             = 0.0
+    prev_inside_plat_for_latency = False
+
+    ts            = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+    output_dir    = video_path.parent
+    video_out     = output_dir / f"{video_path.stem}_{ts}.mp4"
+    csv_path      = output_dir / f"{video_path.stem}_{ts}_coordinates.csv"
+    summary_path  = output_dir / f"{video_path.stem}_{ts}_summary.txt"
     tracemap_path = output_dir / f"{video_path.stem}_{ts}_tracemap.jpg"
-    heatmap_path = output_dir / f"{video_path.stem}_{ts}_heatmap.jpg"
+    heatmap_path  = output_dir / f"{video_path.stem}_{ts}_heatmap.jpg"
 
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(video_out), fourcc, fps, (frame_w, frame_h))
@@ -1196,13 +1276,6 @@ def main():
 
     processable_frames = end_frame - start_frame
 
-    calib_labels = {
-        "WEST":  S(lang, "cardinal_west"),
-        "NORTH": S(lang, "cardinal_north"),
-        "EAST":  S(lang, "cardinal_east"),
-        "SOUTH": S(lang, "cardinal_south"),
-    }
-
     while True:
         current_pos = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
         if current_pos >= end_frame:
@@ -1216,9 +1289,9 @@ def main():
         pos       = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos)
 
         if pos and prev_pos:
-            d_px = euclidean_px(prev_pos, pos)
-            running_dist_px += d_px
-            running_dist_cm += euclidean_cm(prev_pos, pos, scale_x, scale_y)
+            seg_dist_cm = euclidean_cm(prev_pos, pos, scale_x, scale_y)
+            running_dist_px += euclidean_px(prev_pos, pos)
+            running_dist_cm += seg_dist_cm
             accumulate_segment(q_stats, prev_pos, pos, west, north, east, south,
                                frame_dt, scale_x, scale_y)
             if args.quadrantcross:
@@ -1228,7 +1301,7 @@ def main():
         elif pos and prev_pos == pos:
             accumulate_static(q_stats, pos, west, north, east, south, frame_dt)
 
-        if has_platform and pos:
+        if args.platformcross and has_platform and pos:
             curr_inside = point_in_platform(pos, platform_corners)
             if prev_pos is not None:
                 if prev_inside_platform and not curr_inside:
@@ -1237,6 +1310,31 @@ def main():
                     if segment_crosses_platform_twice(prev_pos, pos, platform_corners):
                         platform_exits += 1
             prev_inside_platform = curr_inside
+
+        if para_corners is not None and pos:
+            curr_inside_para = point_in_platform(pos, para_corners)
+            if prev_pos is not None:
+                if curr_inside_para:
+                    frac = 0.5 if not prev_inside_para else 1.0
+                    para_time_s  += frac * frame_dt
+                    para_dist_cm += euclidean_cm(prev_pos, pos, scale_x, scale_y) * frac
+                if prev_inside_para and not curr_inside_para:
+                    para_exits += 1
+                elif not prev_inside_para and not curr_inside_para:
+                    if segment_crosses_platform_twice(prev_pos, pos, para_corners):
+                        para_exits += 1
+            elif curr_inside_para:
+                para_time_s += frame_dt
+            prev_inside_para = curr_inside_para
+
+        if args.latency and has_platform and not latency_done and pos:
+            if prev_pos is not None:
+                latency_dist_acc += euclidean_cm(prev_pos, pos, scale_x, scale_y)
+                if segment_enters_platform(prev_pos, pos, platform_corners, prev_inside_plat_for_latency):
+                    latency_time_s  = timestamp
+                    latency_dist_cm = latency_dist_acc
+                    latency_done    = True
+            prev_inside_plat_for_latency = point_in_platform(pos, platform_corners)
 
         if pos:
             prev_pos = pos
@@ -1262,23 +1360,23 @@ def main():
             cv2.polylines(annotated, [pts_np], isClosed=True, color=(200, 200, 50), thickness=2)
             for i, (corner_name, _) in enumerate(PLATFORM_STEPS):
                 pt = platform_corners[i]
-                col = PLATFORM_COLORS[corner_name]
-                cv2.circle(annotated, pt, 4, col, -1)
+                cv2.circle(annotated, pt, 4, PLATFORM_COLORS[corner_name], -1)
+
+        if para_corners is not None:
+            para_pts_np = np.array([(int(p[0]), int(p[1])) for p in para_corners], dtype=np.int32)
+            cv2.polylines(annotated, [para_pts_np], isClosed=True, color=(0, 180, 255), thickness=2)
 
         def quadrant_label_pos(qa, qb):
             mx = (qa[0] + qb[0]) // 2
             my = (qa[1] + qb[1]) // 2
-            mx = int(mx * 0.6 + cx * 0.4)
-            my = int(my * 0.6 + cy * 0.4)
-            return (mx, my)
+            return (int(mx * 0.6 + cx * 0.4), int(my * 0.6 + cy * 0.4))
 
-        q_label_positions = {
+        for q, lp in {
             "NE": quadrant_label_pos(north, east),
             "NW": quadrant_label_pos(north, west),
             "SW": quadrant_label_pos(south, west),
             "SE": quadrant_label_pos(south, east),
-        }
-        for q, lp in q_label_positions.items():
+        }.items():
             cv2.putText(annotated, q, lp, cv2.FONT_HERSHEY_SIMPLEX, 0.5, QUADRANT_COLORS[q], 1)
 
         if pos:
@@ -1287,8 +1385,8 @@ def main():
                 trail.pop(0)
         for i in range(1, len(trail)):
             alpha = i / len(trail)
-            color = (0, int(255 * alpha), int(100 * (1 - alpha)))
-            cv2.line(annotated, trail[i - 1], trail[i], color, 2)
+            cv2.line(annotated, trail[i - 1], trail[i],
+                     (0, int(255 * alpha), int(100 * (1 - alpha))), 2)
         if pos:
             cv2.circle(annotated, pos, 8,  (0, 0, 255), -1)
             cv2.circle(annotated, pos, 10, (255, 255, 255), 1)
@@ -1298,19 +1396,28 @@ def main():
         pos_str   = f"({pos[0]}, {pos[1]})" if pos else "n/a"
         hud_dist  = f"{running_dist_px:.1f} px  |  {running_dist_cm:.1f} cm"
 
-        hud_h = 120 if has_platform else 100
-        draw_transparent_banner(annotated, 5, 5, 340, hud_h)
-        cv2.putText(annotated, S(lang, "hud_frame", frame=frame_idx, time=timestamp),
-                    (10, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1)
-        cv2.putText(annotated, S(lang, "hud_position", pos=pos_str),
-                    (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 220), 1)
-        cv2.putText(annotated, status,
-                    (10, 72), cv2.FONT_HERSHEY_SIMPLEX, 0.5, hud_color, 1)
-        cv2.putText(annotated, S(lang, "hud_dist", dist=hud_dist),
-                    (10, 95), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 200, 50), 1)
-        if has_platform:
-            cv2.putText(annotated, S(lang, "hud_platform_exits", n=platform_exits),
-                        (10, 118), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 50), 1)
+        hud_lines = [
+            (S(lang, "hud_frame",    frame=frame_idx, time=timestamp), (220, 220, 220)),
+            (S(lang, "hud_position", pos=pos_str),                     (220, 220, 220)),
+            (status,                                                     hud_color),
+            (S(lang, "hud_dist",     dist=hud_dist),                   (255, 200, 50)),
+        ]
+        if args.platformcross and has_platform:
+            hud_lines.append((S(lang, "hud_platform_exits", n=platform_exits), (200, 200, 50)))
+        if para_corners is not None:
+            hud_lines.append((S(lang, "hud_paraplatform", t=para_time_s, d=para_dist_cm, x=para_exits), (0, 180, 255)))
+        if args.latency and has_platform:
+            if latency_done:
+                hud_lines.append((S(lang, "hud_latency_done", t=latency_time_s, d=latency_dist_cm), (180, 255, 100)))
+            else:
+                hud_lines.append((S(lang, "hud_latency_pending"), (180, 180, 180)))
+
+        line_h = 23
+        hud_h  = 10 + len(hud_lines) * line_h
+        draw_transparent_banner(annotated, 5, 5, 400, hud_h)
+        for li, (text, color) in enumerate(hud_lines):
+            cv2.putText(annotated, text, (10, 10 + (li + 1) * line_h - 4),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.52, color, 1)
 
         total_q_time = sum(v["time_s"]  for v in q_stats.values())
         total_q_dist = sum(v["dist_cm"] for v in q_stats.values())
@@ -1318,7 +1425,6 @@ def main():
 
         writer.write(annotated)
         frame_idx += 1
-
         emit_progress(frame_idx, processable_frames, loop_start, cfg["app_mode"])
 
     if not cfg["app_mode"]:
@@ -1344,8 +1450,7 @@ def main():
                 total_dist_px += euclidean_px(prev, curr)
                 total_dist_cm += euclidean_cm(prev, curr, scale_x, scale_y)
                 accumulate_segment(q_stats_final, prev, curr,
-                                   west, north, east, south,
-                                   frame_dt, scale_x, scale_y)
+                                   west, north, east, south, frame_dt, scale_x, scale_y)
                 valid_pairs += 1
             else:
                 accumulate_static(q_stats_final, curr, west, north, east, south, frame_dt)
@@ -1354,12 +1459,24 @@ def main():
     total_q_time = sum(v["time_s"]  for v in q_stats_final.values())
     total_q_dist = sum(v["dist_cm"] for v in q_stats_final.values())
 
+    proximity_avg_cm   = None
+    proximity_n_frames = 0
+    if args.proximity and has_platform:
+        pcx, pcy = platform_center(platform_corners)
+        dists = [
+            euclidean_cm((rec["x"], rec["y"]), (pcx, pcy), scale_x, scale_y)
+            for rec in records if rec["x"] is not None
+        ]
+        if dists:
+            proximity_avg_cm   = sum(dists) / len(dists)
+            proximity_n_frames = len(dists)
+
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer_csv = csv.DictWriter(f, fieldnames=["frame", "timestamp_s", "x", "y", "interpolated"])
         writer_csv.writeheader()
         writer_csv.writerows(records)
 
-    sorted_q     = sorted(QUADRANT_NAMES, key=lambda q: q_stats_final[q]["time_s"], reverse=True)
+    sorted_q = sorted(QUADRANT_NAMES, key=lambda q: q_stats_final[q]["time_s"], reverse=True)
     col_q  = S(lang, "summary_col_q")
     col_t  = S(lang, "summary_col_t")
     col_tp = S(lang, "summary_col_tp")
@@ -1393,9 +1510,10 @@ def main():
             S(lang, "summary_platform_ne", v=cfg["platform_ne"]),
             S(lang, "summary_platform_se", v=cfg["platform_se"]),
             S(lang, "summary_platform_sw", v=cfg["platform_sw"]),
-            S(lang, "summary_platform_exits", n=platform_exits),
-            "",
         ]
+        if args.platformcross:
+            lines.append(S(lang, "summary_platform_exits", n=platform_exits))
+        lines.append("")
 
     lines += [
         S(lang, "summary_detected", n=detected),
@@ -1426,17 +1544,15 @@ def main():
         t_pct = (t_s  / total_q_time * 100) if total_q_time > 0 else 0.0
         d_pct = (d_cm / total_q_dist * 100) if total_q_dist > 0 else 0.0
         if args.quadrantcross:
-            ex = q_exits.get(q, 0)
-            lines.append(f"{q:<10} {t_s:>10.2f} {t_pct:>9.1f}% {d_cm:>11.2f} {d_pct:>9.1f}% {ex:>8}")
+            lines.append(f"{q:<10} {t_s:>10.2f} {t_pct:>9.1f}% {d_cm:>11.2f} {d_pct:>9.1f}% {q_exits.get(q, 0):>8}")
         else:
             lines.append(f"{q:<10} {t_s:>10.2f} {t_pct:>9.1f}% {d_cm:>11.2f} {d_pct:>9.1f}%")
 
     total_label = S(lang, "summary_total")
     if args.quadrantcross:
-        total_exits = sum(q_exits.values())
         lines += [
             f"{'-'*66}",
-            f"{total_label:<10} {total_q_time:>10.2f} {'100.0':>9}% {total_q_dist:>11.2f} {'100.0':>9}% {total_exits:>8}",
+            f"{total_label:<10} {total_q_time:>10.2f} {'100.0':>9}% {total_q_dist:>11.2f} {'100.0':>9}% {sum(q_exits.values()):>8}",
         ]
     else:
         lines += [
@@ -1445,18 +1561,39 @@ def main():
         ]
 
     if args.quadrantcross:
-        lines += [
-            "",
-            S(lang, "summary_quad_exits_hdr"),
-        ]
+        lines += ["", S(lang, "summary_quad_exits_hdr")]
         for q in QUADRANT_NAMES:
             lines.append(S(lang, "summary_quad_exit", q=q, n=q_exits[q]))
 
-    lines += [
-        "",
-        S(lang, "summary_rerun"),
-        rerun_cmd,
-    ]
+    if para_corners is not None:
+        t_pct = (para_time_s / total_q_time * 100) if total_q_time > 0 else 0.0
+        d_pct = (para_dist_cm / total_q_dist * 100) if total_q_dist > 0 else 0.0
+        lines += [
+            "",
+            S(lang, "summary_paraplatform_hdr", s=para_scale, sl=para_side_scale),
+            S(lang, "summary_paraplatform_t",   t=para_time_s,  p=t_pct),
+            S(lang, "summary_paraplatform_d",   d=para_dist_cm, p=d_pct),
+            S(lang, "summary_paraplatform_x",   n=para_exits),
+        ]
+
+    if args.proximity and proximity_avg_cm is not None:
+        lines += [
+            "",
+            S(lang, "summary_proximity_hdr"),
+            S(lang, "summary_proximity_avg", d=proximity_avg_cm, n=proximity_n_frames),
+        ]
+
+    if args.latency and has_platform:
+        lines += ["", S(lang, "summary_latency_hdr")]
+        if latency_done:
+            lines += [
+                S(lang, "summary_latency_t", t=latency_time_s),
+                S(lang, "summary_latency_d", d=latency_dist_cm),
+            ]
+        else:
+            lines.append(S(lang, "summary_latency_none"))
+
+    lines += ["", S(lang, "summary_rerun"), rerun_cmd]
 
     with open(summary_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
@@ -1469,16 +1606,22 @@ def main():
 
     if cfg["app_mode"]:
         out = {
-            "done":           True,
-            "video_out":      str(video_out),
-            "csv_out":        str(csv_path),
-            "summary_out":    str(summary_path),
-            "tracemap_out":   str(tracemap_path),
-            "heatmap_out":    str(heatmap_path),
-            "total_dist_cm":  round(total_dist_cm, 2),
-            "total_frames":   frame_idx,
-            "detected":       detected,
-            "platform_exits": platform_exits if has_platform else None,
+            "done":             True,
+            "video_out":        str(video_out),
+            "csv_out":          str(csv_path),
+            "summary_out":      str(summary_path),
+            "tracemap_out":     str(tracemap_path),
+            "heatmap_out":      str(heatmap_path),
+            "total_dist_cm":    round(total_dist_cm, 2),
+            "total_frames":     frame_idx,
+            "detected":         detected,
+            "platform_exits":   platform_exits if args.platformcross and has_platform else None,
+            "para_time_s":      round(para_time_s, 3)  if para_corners is not None else None,
+            "para_dist_cm":     round(para_dist_cm, 3) if para_corners is not None else None,
+            "para_exits":       para_exits             if para_corners is not None else None,
+            "proximity_avg_cm": round(proximity_avg_cm, 3) if proximity_avg_cm is not None else None,
+            "latency_time_s":   round(latency_time_s, 3)   if latency_done else None,
+            "latency_dist_cm":  round(latency_dist_cm, 3)  if latency_done else None,
         }
         if args.quadrantcross:
             out["quadrant_exits"] = q_exits

@@ -1,5 +1,6 @@
 ## Todo List
 
+- Set up Git and separate main.py to chunks?
 - fix python not sending and js not recieving coordinates
 - make outputArea unpressable before an output in HTML
 - Add descriptions to all settings in HTML (what they actually do.)

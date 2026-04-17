@@ -93,6 +93,9 @@ STRINGS = {
         "hud_paraplatform":         "ParaPlatform  T:{t:.1f}s D:{d:.1f}cm X:{x}",
         "hud_latency_done":         "Latency: {t:.2f}s / {d:.2f}cm",
         "hud_latency_pending":      "Latency: tracking...",
+        "hud_para_latency_done":    "Para Latency: {t:.2f}s / {d:.2f}cm",
+        "hud_para_latency_pending": "Para Latency: tracking...",
+        "hud_proximity":            "Proximity: {d:.1f}cm",
         "leaderboard_title":        "QUADRANT LEADERBOARD",
         "cardinal_west":            "WEST",
         "cardinal_north":           "NORTH",
@@ -145,6 +148,10 @@ STRINGS = {
         "summary_latency_t":        "Time to first entry: {t:.2f} s",
         "summary_latency_d":        "Dist to first entry: {d:.2f} cm",
         "summary_latency_none":     "Rat never entered platform during session",
+        "summary_para_latency_hdr": "-- Latency to ParaPlatform --",
+        "summary_para_latency_t":   "Time to first para entry: {t:.2f} s",
+        "summary_para_latency_d":   "Dist to first para entry: {d:.2f} cm",
+        "summary_para_latency_none":"Rat never entered paraplatform during session",
         "summary_rerun":            "-- Re-run Command --",
     },
     "fr": {
@@ -172,6 +179,9 @@ STRINGS = {
         "hud_paraplatform":         "ParaPlateforme T:{t:.1f}s D:{d:.1f}cm X:{x}",
         "hud_latency_done":         "Latence: {t:.2f}s / {d:.2f}cm",
         "hud_latency_pending":      "Latence: en cours...",
+        "hud_para_latency_done":    "Para Latence: {t:.2f}s / {d:.2f}cm",
+        "hud_para_latency_pending": "Para Latence: en cours...",
+        "hud_proximity":            "Proximite: {d:.1f}cm",
         "leaderboard_title":        "CLASSEMENT QUADRANTS",
         "cardinal_west":            "OUEST",
         "cardinal_north":           "NORD",
@@ -224,6 +234,10 @@ STRINGS = {
         "summary_latency_t":        "Temps 1ere entree: {t:.2f} s",
         "summary_latency_d":        "Dist 1ere entree : {d:.2f} cm",
         "summary_latency_none":     "Le rat n'est jamais entre sur la plateforme",
+        "summary_para_latency_hdr": "-- Latence vers la ParaPlateforme --",
+        "summary_para_latency_t":   "Temps 1ere entree para: {t:.2f} s",
+        "summary_para_latency_d":   "Dist 1ere entree para : {d:.2f} cm",
+        "summary_para_latency_none":"Le rat n'est jamais entre en paraplateforme",
         "summary_rerun":            "-- Commande de relance --",
     },
     "tr": {
@@ -251,6 +265,9 @@ STRINGS = {
         "hud_paraplatform":         "ParaPlatform  T:{t:.1f}s D:{d:.1f}cm X:{x}",
         "hud_latency_done":         "Gecikme: {t:.2f}s / {d:.2f}cm",
         "hud_latency_pending":      "Gecikme: olculuyor...",
+        "hud_para_latency_done":    "Para Gecikme: {t:.2f}s / {d:.2f}cm",
+        "hud_para_latency_pending": "Para Gecikme: olculuyor...",
+        "hud_proximity":            "Yakinlik: {d:.1f}cm",
         "leaderboard_title":        "CEYREK SIRALAMASI",
         "cardinal_west":            "BATI",
         "cardinal_north":           "KUZEY",
@@ -303,6 +320,10 @@ STRINGS = {
         "summary_latency_t":        "Ilk girise kadar sure: {t:.2f} s",
         "summary_latency_d":        "Ilk girise kadar mesafe: {d:.2f} cm",
         "summary_latency_none":     "Sickan hic platforma girmedi",
+        "summary_para_latency_hdr": "-- ParaPlatform Gecikmesi --",
+        "summary_para_latency_t":   "Para ilk girise kadar sure: {t:.2f} s",
+        "summary_para_latency_d":   "Para ilk girise kadar mesafe: {d:.2f} cm",
+        "summary_para_latency_none":"Sickan hic paraplatforma girmedi",
         "summary_rerun":            "-- Yeniden calistirma Komutu --",
     },
 }
@@ -1245,6 +1266,12 @@ def main():
     latency_dist_acc             = 0.0
     prev_inside_plat_for_latency = False
 
+    para_latency_time_s               = None
+    para_latency_dist_cm              = None
+    para_latency_done                 = False
+    para_latency_dist_acc             = 0.0
+    prev_inside_para_for_latency      = False
+
     ts            = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
     output_dir    = video_path.parent
     video_out     = output_dir / f"{video_path.stem}_{ts}.mp4"
@@ -1273,6 +1300,9 @@ def main():
     platform_exits       = 0
     prev_inside_platform = False
     loop_start           = time.time()
+
+    live_proximity_sum    = 0.0
+    live_proximity_count  = 0
 
     processable_frames = end_frame - start_frame
 
@@ -1335,6 +1365,20 @@ def main():
                     latency_dist_cm = latency_dist_acc
                     latency_done    = True
             prev_inside_plat_for_latency = point_in_platform(pos, platform_corners)
+
+        if args.latency and para_corners is not None and not para_latency_done and pos:
+            if prev_pos is not None:
+                para_latency_dist_acc += euclidean_cm(prev_pos, pos, scale_x, scale_y)
+                if segment_enters_platform(prev_pos, pos, para_corners, prev_inside_para_for_latency):
+                    para_latency_time_s  = timestamp
+                    para_latency_dist_cm = para_latency_dist_acc
+                    para_latency_done    = True
+            prev_inside_para_for_latency = point_in_platform(pos, para_corners)
+
+        if args.proximity and has_platform and pos:
+            pcx, pcy = platform_center(platform_corners)
+            live_proximity_sum   += euclidean_cm(pos, (pcx, pcy), scale_x, scale_y)
+            live_proximity_count += 1
 
         if pos:
             prev_pos = pos
@@ -1406,11 +1450,19 @@ def main():
             hud_lines.append((S(lang, "hud_platform_exits", n=platform_exits), (200, 200, 50)))
         if para_corners is not None:
             hud_lines.append((S(lang, "hud_paraplatform", t=para_time_s, d=para_dist_cm, x=para_exits), (0, 180, 255)))
+        if args.proximity and has_platform:
+            live_prox = (live_proximity_sum / live_proximity_count) if live_proximity_count > 0 else 0.0
+            hud_lines.append((S(lang, "hud_proximity", d=live_prox), (180, 130, 255)))
         if args.latency and has_platform:
             if latency_done:
                 hud_lines.append((S(lang, "hud_latency_done", t=latency_time_s, d=latency_dist_cm), (180, 255, 100)))
             else:
                 hud_lines.append((S(lang, "hud_latency_pending"), (180, 180, 180)))
+        if args.latency and para_corners is not None:
+            if para_latency_done:
+                hud_lines.append((S(lang, "hud_para_latency_done", t=para_latency_time_s, d=para_latency_dist_cm), (100, 255, 180)))
+            else:
+                hud_lines.append((S(lang, "hud_para_latency_pending"), (140, 140, 140)))
 
         line_h = 23
         hud_h  = 10 + len(hud_lines) * line_h
@@ -1593,6 +1645,16 @@ def main():
         else:
             lines.append(S(lang, "summary_latency_none"))
 
+    if args.latency and para_corners is not None:
+        lines += ["", S(lang, "summary_para_latency_hdr")]
+        if para_latency_done:
+            lines += [
+                S(lang, "summary_para_latency_t", t=para_latency_time_s),
+                S(lang, "summary_para_latency_d", d=para_latency_dist_cm),
+            ]
+        else:
+            lines.append(S(lang, "summary_para_latency_none"))
+
     lines += ["", S(lang, "summary_rerun"), rerun_cmd]
 
     with open(summary_path, "w", encoding="utf-8") as f:
@@ -1635,6 +1697,8 @@ def main():
             "proximity_avg_cm": round(proximity_avg_cm, 3) if proximity_avg_cm is not None else None,
             "latency_time_s":   round(latency_time_s, 3)   if latency_done else None,
             "latency_dist_cm":  round(latency_dist_cm, 3)  if latency_done else None,
+            "para_latency_time_s":  round(para_latency_time_s, 3)  if para_latency_done else None,
+            "para_latency_dist_cm": round(para_latency_dist_cm, 3) if para_latency_done else None,
         }
         if args.quadrantcross:
             out["quadrant_exits"] = q_exits

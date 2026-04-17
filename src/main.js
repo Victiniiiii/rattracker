@@ -1,9 +1,23 @@
-let invoke, convertFileSrc, readTextFile, writeTextFile, Command;
+let invoke, Command;
 const tauri = window.__TAURI__;
 invoke = tauri.core.invoke;
-convertFileSrc = tauri.core.convertFileSrc;
-({ readTextFile, writeTextFile } = tauri.fs);
 Command = tauri.shell.Command;
+
+let fileServerPort = null;
+
+async function initFileServer() {
+	fileServerPort = await invoke("get_server_port");
+}
+
+function fileUrl(path) {
+	return `http://127.0.0.1:${fileServerPort}/file?path=${encodeURIComponent(path)}`;
+}
+
+async function fetchText(path) {
+	const res = await fetch(fileUrl(path));
+	if (!res.ok) throw new Error(`Failed to fetch ${path}`);
+	return res.text();
+}
 
 const STORAGE_KEY = "rattracker_config";
 
@@ -540,33 +554,28 @@ async function runScript() {
 			try {
 				document.getElementById("tabVideo").hidden = false;
 				document.getElementById("videotabbutton").classList.add("active");
-				const fileBytes = await tauri.fs.readFile(parsed.video_out);
-				const blob = new Blob([fileBytes], { type: "video/mp4" });
-				const blobUrl = URL.createObjectURL(blob);
 				const videoEl = document.getElementById("outputVideo");
-				videoEl.src = blobUrl;
+				videoEl.src = fileUrl(parsed.video_out);
 				videoEl.load();
 			} catch (error) {
 				console.error("Video load error:", error);
 			}
 
 			try {
-				const csvText = await readTextFile(parsed.csv_out);
-				renderCsvTable(csvText);
+				renderCsvTable(await fetchText(parsed.csv_out));
 			} catch (error) {
 				console.error("CSV load error:", error);
 			}
 
 			try {
-				const summaryText = await readTextFile(parsed.summary_out);
-				document.getElementById("summaryText").textContent = summaryText;
+				document.getElementById("summaryText").textContent = await fetchText(parsed.summary_out);
 			} catch (error) {
 				console.error("Summary load error:", error);
 			}
 
 			try {
-				document.getElementById("heatmap").style.backgroundImage = `url("${convertFileSrc(parsed.heatmap_out)}")`;
-				document.getElementById("tracemap").style.backgroundImage = `url("${convertFileSrc(parsed.tracemap_out)}")`;
+				document.getElementById("heatmap").style.backgroundImage = `url("${fileUrl(parsed.heatmap_out)}")`;
+				document.getElementById("tracemap").style.backgroundImage = `url("${fileUrl(parsed.tracemap_out)}")`;
 			} catch (error) {
 				console.error("Image load error:", error);
 			}
@@ -600,6 +609,7 @@ function cancelScript() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+	initFileServer();
 	cfg = loadConfig();
 	populateForm(cfg);
 	applyI18n();

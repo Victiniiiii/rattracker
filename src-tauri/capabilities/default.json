@@ -5,17 +5,6 @@
 	"windows": ["main"],
 	"permissions": [
 		"dialog:default",
-		"fs:allow-appconfig-read",
-		"fs:allow-appconfig-write",
-		"fs:allow-exists",
-		{
-			"identifier": "fs:allow-read-text-file",
-			"allow": [{ "path": "**" }]
-		},
-		{
-			"identifier": "fs:allow-read-file",
-			"allow": [{ "path": "**" }]
-		},
 		{
 			"identifier": "shell:allow-spawn",
 			"allow": [

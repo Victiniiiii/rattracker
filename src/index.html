@@ -38,15 +38,15 @@
 					<h3 data-i18n="detection">Detection</h3>
 					<div class="formGrid">
 						<div class="formField">
-							<label for="mog2_history" data-i18n="mog2_history">MOG2 History</label>
-							<p class="fieldDesc" data-i18n-desc="mog2_history_desc"></p>
-							<input type="number" id="mog2_history" name="mog2_history" min="1" value="120" />
+							<label for="mog2_history_s" data-i18n="mog2_history_s">MOG2 History (s)</label>
+							<p class="fieldDesc" data-i18n-desc="mog2_history_s_desc"></p>
+							<input type="number" id="mog2_history_s" name="mog2_history_s" min="0.1" step="0.1" value="4.0" />
 						</div>
 
 						<div class="formField">
 							<label for="mog2_threshold" data-i18n="mog2_threshold">MOG2 Threshold</label>
 							<p class="fieldDesc" data-i18n-desc="mog2_threshold_desc"></p>
-							<input type="number" id="mog2_threshold" name="mog2_threshold" min="1" value="40" />
+							<input type="number" id="mog2_threshold" name="mog2_threshold" min="1" value="32" />
 						</div>
 
 						<div class="formField formFieldCheck">
@@ -82,9 +82,9 @@
 						</div>
 
 						<div class="formField">
-							<label for="trail_len" data-i18n="trail_len">Trail Length (frames)</label>
-							<p class="fieldDesc" data-i18n-desc="trail_len_desc"></p>
-							<input type="number" id="trail_len" name="trail_len" min="1" value="40" />
+							<label for="trail_s" data-i18n="trail_s">Trail Length (s)</label>
+							<p class="fieldDesc" data-i18n-desc="trail_s_desc"></p>
+							<input type="number" id="trail_s" name="trail_s" min="0.1" step="0.1" value="2.0" />
 						</div>
 
 						<div class="formField">
@@ -202,6 +202,19 @@
 						<div class="formField" id="tracemapColorRow" hidden>
 							<label for="tracemapcolor">Color</label>
 							<input type="color" id="tracemapcolor" name="tracemapcolor" value="#00ffff" />
+						</div>
+
+						<div class="formField formFieldCheck">
+							<label class="checkLabel">
+								<input type="checkbox" id="ratcolor_enabled" name="ratcolor_enabled" onchange="updateRatColorVisibility()" />
+								<span data-i18n="ratcolor">Custom Rat Marker Color</span>
+							</label>
+							<p class="fieldDesc" data-i18n-desc="ratcolor_desc"></p>
+						</div>
+
+						<div class="formField" id="ratColorRow" hidden>
+							<label for="ratcolor">Color</label>
+							<input type="color" id="ratcolor" name="ratcolor" value="#ff0000" />
 						</div>
 					</div>
 

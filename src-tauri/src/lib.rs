@@ -1,6 +1,5 @@
 // src-tauri/src/lib.rs
 
-use std::net::SocketAddr;
 use std::sync::OnceLock;
 use axum::{Router, extract::Query, http::{HeaderMap, HeaderValue, StatusCode, header}, response::IntoResponse, routing::get};
 use serde::Deserialize;

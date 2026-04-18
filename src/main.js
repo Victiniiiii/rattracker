@@ -22,14 +22,14 @@ async function fetchText(path) {
 const STORAGE_KEY = "rattracker_config";
 
 const DEFAULTS = {
-	mog2_history: 120,
-	mog2_threshold: 40,
+	mog2_history_s: 4.0,
+	mog2_threshold: 32,
 	mog2_detect_shadow: false,
 	morph_open_k: 3,
 	morph_close_k: 15,
 	min_contour_area: 300,
 	max_contour_area: 12000,
-	trail_len: 40,
+	trail_s: 2.0,
 	debug_frames: 0,
 	pool_west: "",
 	pool_north: "",
@@ -47,6 +47,8 @@ const DEFAULTS = {
 	latency: false,
 	tracemapcolor_enabled: false,
 	tracemapcolor: "#00ffff",
+	ratcolor_enabled: false,
+	ratcolor: "#ff0000",
 	language: "en",
 };
 
@@ -55,8 +57,8 @@ const I18N = {
 		title: "Rat Tracker",
 		settings: "Settings",
 		detection: "Detection",
-		mog2_history: "MOG2 History",
-		mog2_history_desc: "Number of frames used to build the background model. Higher = slower adaptation, better for stable cameras.",
+		mog2_history_s: "MOG2 History (s)",
+		mog2_history_s_desc: "Duration in seconds used to build the background model. Higher = slower adaptation, better for stable cameras.",
 		mog2_threshold: "MOG2 Threshold",
 		mog2_threshold_desc: "Sensitivity of foreground detection. Lower = more sensitive (more false positives). Higher = less sensitive (may miss rat).",
 		detect_shadows: "Detect Shadows",
@@ -69,8 +71,8 @@ const I18N = {
 		min_area_desc: "Minimum blob size to be considered the rat. Increase if small noise is being detected as the rat.",
 		max_area: "Max Contour Area (px²)",
 		max_area_desc: "Maximum blob size to be considered the rat. Decrease if large reflections or objects are being falsely detected.",
-		trail_len: "Trail Length (frames)",
-		trail_len_desc: "How many past positions are drawn as a movement trail in the output video. Purely visual.",
+		trail_s: "Trail Length (s)",
+		trail_s_desc: "Duration in seconds of the movement trail drawn in the output video. Purely visual.",
 		debug_frames: "Debug Frames",
 		debug_frames_desc: "Saves the first N foreground mask images to disk for troubleshooting detection. Set to 0 to disable.",
 		pool_calib: "Pool Calibration Cache",
@@ -101,6 +103,8 @@ const I18N = {
 		latency_desc: "Records the time and distance travelled until the rat first steps onto the platform. Requires platform calibration.",
 		tracemapcolor: "Tracemap Color",
 		tracemapcolor_desc: "Color of the path line drawn on the tracemap image output.",
+		ratcolor: "Rat Marker Color",
+		ratcolor_desc: "Color of the dot and bounding marker drawn on the rat in the output video.",
 		save: "Save",
 		cancel: "Cancel",
 		select_video: "Select Video",
@@ -119,8 +123,8 @@ const I18N = {
 		title: "Rat Tracker",
 		settings: "Paramètres",
 		detection: "Détection",
-		mog2_history: "Historique MOG2",
-		mog2_history_desc: "Nombre d'images utilisées pour construire le modèle de fond. Plus élevé = adaptation plus lente, meilleur pour les caméras stables.",
+		mog2_history_s: "Historique MOG2 (s)",
+		mog2_history_s_desc: "Durée en secondes pour construire le modèle de fond. Plus élevé = adaptation plus lente, meilleur pour les caméras stables.",
 		mog2_threshold: "Seuil MOG2",
 		mog2_threshold_desc: "Sensibilité de la détection du premier plan. Plus bas = plus sensible (faux positifs). Plus haut = moins sensible (peut rater le rat).",
 		detect_shadows: "Détecter les ombres",
@@ -133,8 +137,8 @@ const I18N = {
 		min_area_desc: "Taille minimale du blob pour être considéré comme le rat. Augmentez si du bruit est détecté.",
 		max_area: "Surface contour max. (px²)",
 		max_area_desc: "Taille maximale du blob pour être considéré comme le rat. Diminuez si des reflets sont détectés.",
-		trail_len: "Longueur trace (images)",
-		trail_len_desc: "Nombre de positions passées dessinées comme trace dans la vidéo de sortie. Purement visuel.",
+		trail_s: "Longueur trace (s)",
+		trail_s_desc: "Durée en secondes de la trace de mouvement dessinée dans la vidéo de sortie. Purement visuel.",
 		debug_frames: "Images de débogage",
 		debug_frames_desc: "Sauvegarde les N premiers masques de premier plan pour le débogage. 0 pour désactiver.",
 		pool_calib: "Cache calibration bassin",
@@ -165,6 +169,8 @@ const I18N = {
 		latency_desc: "Enregistre le temps et la distance jusqu'à la première montée sur la plateforme.",
 		tracemapcolor: "Couleur tracemap",
 		tracemapcolor_desc: "Couleur du tracé sur l'image tracemap.",
+		ratcolor: "Couleur du marqueur rat",
+		ratcolor_desc: "Couleur du point et du marqueur dessinés sur le rat dans la vidéo de sortie.",
 		save: "Enregistrer",
 		cancel: "Annuler",
 		select_video: "Choisir une vidéo",
@@ -183,8 +189,8 @@ const I18N = {
 		title: "Fare İzleyici",
 		settings: "Ayarlar",
 		detection: "Algılama",
-		mog2_history: "MOG2 Geçmişi",
-		mog2_history_desc: "Arka plan modelini oluşturmak için kullanılan kare sayısı. Yüksek = yavaş uyum, sabit kameralar için daha iyi.",
+		mog2_history_s: "MOG2 Geçmişi (s)",
+		mog2_history_s_desc: "Arka plan modelini oluşturmak için kullanılan süre (saniye). Yüksek = yavaş uyum, sabit kameralar için daha iyi.",
 		mog2_threshold: "MOG2 Eşiği",
 		mog2_threshold_desc: "Ön plan algılama hassasiyeti. Düşük = daha hassas (yanlış pozitifler). Yüksek = daha az hassas.",
 		detect_shadows: "Gölgeleri Algıla",
@@ -197,8 +203,8 @@ const I18N = {
 		min_area_desc: "Rat olarak kabul edilmek için minimum blob boyutu. Gürültü algılanıyorsa artırın.",
 		max_area: "Maks Kontur Alanı (px²)",
 		max_area_desc: "Rat olarak kabul edilmek için maksimum blob boyutu. Yansımalar algılanıyorsa azaltın.",
-		trail_len: "İz Uzunluğu (kare)",
-		trail_len_desc: "Çıktı videosunda hareket izi olarak çizilen geçmiş konum sayısı. Yalnızca görsel.",
+		trail_s: "İz Uzunluğu (s)",
+		trail_s_desc: "Çıktı videosunda hareket izi olarak çizilen süre (saniye). Yalnızca görsel.",
 		debug_frames: "Hata Ayıklama Kareleri",
 		debug_frames_desc: "İlk N ön plan maskesini diske kaydeder. 0 = devre dışı.",
 		pool_calib: "Havuz Kalibrasyon Önbelleği",
@@ -229,6 +235,8 @@ const I18N = {
 		latency_desc: "Ratın platforma ilk adım atana kadar geçen süre ve mesafeyi kaydeder.",
 		tracemapcolor: "Tracemap Rengi",
 		tracemapcolor_desc: "Tracemap çıktı görüntüsündeki yol çizgisinin rengi.",
+		ratcolor: "Rat Marker Rengi",
+		ratcolor_desc: "Çıktı videosunda rat üzerine çizilen nokta ve işaretin rengi.",
 		save: "Kaydet",
 		cancel: "İptal",
 		select_video: "Video Seç",
@@ -341,6 +349,12 @@ function updateTracemapColorVisibility() {
 	if (colorRow) colorRow.hidden = !enabled;
 }
 
+function updateRatColorVisibility() {
+	const enabled = document.getElementById("ratcolor_enabled").checked;
+	const colorRow = document.getElementById("ratColorRow");
+	if (colorRow) colorRow.hidden = !enabled;
+}
+
 function populateForm(formCfg) {
 	const form = document.getElementById("configForm");
 	for (const [key, value] of Object.entries(formCfg)) {
@@ -354,6 +368,7 @@ function populateForm(formCfg) {
 	}
 	updateParaplatformScaleVisibility();
 	updateTracemapColorVisibility();
+	updateRatColorVisibility();
 }
 
 function readForm() {
@@ -382,14 +397,14 @@ function buildArgs(filePath, currentCfg) {
 	if (endValue != "") args.push("--end", endValue);
 
 	args.push("--pool_radius_cm", document.getElementById("poolRadius").value);
-	args.push("--mog2_history", String(currentCfg.mog2_history));
+	args.push("--mog2_history_s", String(currentCfg.mog2_history_s));
 	args.push("--mog2_threshold", String(currentCfg.mog2_threshold));
 	if (currentCfg.mog2_detect_shadow) args.push("--mog2_detect_shadow");
 	args.push("--morph_open_k", String(currentCfg.morph_open_k));
 	args.push("--morph_close_k", String(currentCfg.morph_close_k));
 	args.push("--min_contour_area", String(currentCfg.min_contour_area));
 	args.push("--max_contour_area", String(currentCfg.max_contour_area));
-	args.push("--trail_len", String(currentCfg.trail_len));
+	args.push("--trail_s", String(currentCfg.trail_s));
 	args.push("--debug_frames", String(currentCfg.debug_frames));
 
 	if (currentCfg.pool_west) args.push("--pool_west", currentCfg.pool_west);
@@ -417,6 +432,10 @@ function buildArgs(filePath, currentCfg) {
 		args.push("--tracemapcolor", hexColorToRgbString(currentCfg.tracemapcolor));
 	}
 
+	if (currentCfg.ratcolor_enabled && currentCfg.ratcolor) {
+		args.push("--ratcolor", hexColorToRgbString(currentCfg.ratcolor));
+	}
+
 	args.push("--appmode");
 	return args;
 }
@@ -425,7 +444,6 @@ function setUIRunning(running) {
 	document.getElementById("selectFileBtn").disabled = running;
 	document.getElementById("runBtn").disabled = running || !selectedFile;
 	document.getElementById("cancelBtn").disabled = !running;
-	document.getElementById("settingsBtn").disabled = running;
 	document.getElementById("langBtn").disabled = running;
 	document.getElementById("startTime").disabled = running;
 	document.getElementById("endTime").disabled = running;
@@ -510,7 +528,7 @@ async function runScript() {
 	if (!selectedFile) return;
 
 	document.getElementById("progressBar").value = 0;
-	document.getElementById("progressText").textContent = "0%";
+	document.getElementById("progressText").textContent = "Launching...";
 	document.getElementById("etaText").textContent = "";
 
 	setUIRunning(true);
@@ -623,6 +641,7 @@ window.overlayClose = overlayClose;
 window.saveSettings = saveSettings;
 window.updateParaplatformScaleVisibility = updateParaplatformScaleVisibility;
 window.updateTracemapColorVisibility = updateTracemapColorVisibility;
+window.updateRatColorVisibility = updateRatColorVisibility;
 window.toggleLangDropdown = toggleLangDropdown;
 window.selectLang = selectLang;
 window.selectFile = selectFile;

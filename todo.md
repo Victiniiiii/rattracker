@@ -2,9 +2,18 @@
 
 - Set up Git and separate main.py to chunks?
 
-- fix video glitching by moving the architecture to Rust
+- Add all the new python features to the app.
+- Fix this error below:
+
+warning: unused import: `std::net::SocketAddr`
+ --> src/lib.rs:3:5
+  |
+3 | use std::net::SocketAddr;
+  |     ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
 - be able to open the settings menu while a video is generating.
 - in the UI say something like Launching... so the user knows that the python binary is launching
-- in 4k videos using pixels are too small. use viewwidth-height. would fix both small-big issues
 
 - app icon (multiple), app name, app author name

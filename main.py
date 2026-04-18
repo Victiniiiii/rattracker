@@ -466,29 +466,29 @@ def run_calibration(frame: np.ndarray, lang: str, require_platform: bool = False
                 color = CALIB_COLORS[cardinal]
                 label = calib_cardinal_labels[cardinal]
                 cv2.putText(img, S(lang, "calib_step", step=step+1, cardinal=label),
-                            (tx, ty1), cv2.FONT_HERSHEY_DUPLEX, fs1, color, 1, cv2.LINE_AA)
+                            (tx, ty1), cv2.FONT_HERSHEY_COMPLEX, fs1, color, 1, cv2.LINE_AA)
                 cv2.putText(img, S(lang, "calib_redo"),
-                            (tx, ty2), cv2.FONT_HERSHEY_DUPLEX, fs2, (180, 180, 180), 1, cv2.LINE_AA)
+                            (tx, ty2), cv2.FONT_HERSHEY_COMPLEX, fs2, (180, 180, 180), 1, cv2.LINE_AA)
             else:
                 if not require_platform:
                     cv2.putText(img, S(lang, "calib_confirm"),
-                                (tx, ty1), cv2.FONT_HERSHEY_DUPLEX, fs1, (100, 255, 180), 1, cv2.LINE_AA)
+                                (tx, ty1), cv2.FONT_HERSHEY_COMPLEX, fs1, (100, 255, 180), 1, cv2.LINE_AA)
                     cv2.putText(img, S(lang, "calib_post_confirm"),
-                                (tx, ty2), cv2.FONT_HERSHEY_DUPLEX, fs2, (180, 180, 180), 1, cv2.LINE_AA)
+                                (tx, ty2), cv2.FONT_HERSHEY_COMPLEX, fs2, (180, 180, 180), 1, cv2.LINE_AA)
         elif state["phase"] == "platform":
             step = state["step"]
             if step < len(PLATFORM_STEPS):
                 corner, _ = PLATFORM_STEPS[step]
                 color = PLATFORM_COLORS[corner]
                 cv2.putText(img, S(lang, "calib_pool_done", corner=corner),
-                            (tx, ty1), cv2.FONT_HERSHEY_DUPLEX, fs1, color, 1, cv2.LINE_AA)
+                            (tx, ty1), cv2.FONT_HERSHEY_COMPLEX, fs1, color, 1, cv2.LINE_AA)
                 cv2.putText(img, S(lang, "calib_redo"),
-                            (tx, ty2), cv2.FONT_HERSHEY_DUPLEX, fs2, (180, 180, 180), 1, cv2.LINE_AA)
+                            (tx, ty2), cv2.FONT_HERSHEY_COMPLEX, fs2, (180, 180, 180), 1, cv2.LINE_AA)
             else:
                 cv2.putText(img, S(lang, "calib_all_done"),
-                            (tx, ty1), cv2.FONT_HERSHEY_DUPLEX, fs1, (100, 255, 180), 1, cv2.LINE_AA)
+                            (tx, ty1), cv2.FONT_HERSHEY_COMPLEX, fs1, (100, 255, 180), 1, cv2.LINE_AA)
                 cv2.putText(img, S(lang, "calib_post_confirm"),
-                            (tx, ty2), cv2.FONT_HERSHEY_DUPLEX, fs2, (180, 180, 180), 1, cv2.LINE_AA)
+                            (tx, ty2), cv2.FONT_HERSHEY_COMPLEX, fs2, (180, 180, 180), 1, cv2.LINE_AA)
         dot_r, dot_ro = sc(img, 7), sc(img, 9)
         lbl_off = sc(img, 12)
         lbl_fs  = sc_f(img, 0.52)
@@ -497,7 +497,7 @@ def run_calibration(frame: np.ndarray, lang: str, require_platform: bool = False
             cv2.circle(img, pt, dot_r, col, -1)
             cv2.circle(img, pt, dot_ro, (255, 255, 255), 1)
             cv2.putText(img, calib_cardinal_labels[cardinal],
-                        (pt[0] + lbl_off, pt[1] + sc(img, 5)), cv2.FONT_HERSHEY_DUPLEX, lbl_fs, col, 1, cv2.LINE_AA)
+                        (pt[0] + lbl_off, pt[1] + sc(img, 5)), cv2.FONT_HERSHEY_COMPLEX, lbl_fs, col, 1, cv2.LINE_AA)
         if len(state["pool_points"]) == 4:
             p = state["pool_points"]
             result = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
@@ -512,7 +512,7 @@ def run_calibration(frame: np.ndarray, lang: str, require_platform: bool = False
             cv2.circle(img, pt, dot_r, col, -1)
             cv2.circle(img, pt, dot_ro, (255, 255, 255), 1)
             cv2.putText(img, corner, (pt[0] + lbl_off, pt[1] + sc(img, 5)),
-                        cv2.FONT_HERSHEY_DUPLEX, lbl_fs, col, 1, cv2.LINE_AA)
+                        cv2.FONT_HERSHEY_COMPLEX, lbl_fs, col, 1, cv2.LINE_AA)
         pts_ordered = [state["platform_points"].get(s[0]) for s in PLATFORM_STEPS if s[0] in state["platform_points"]]
         if len(pts_ordered) >= 2:
             for i in range(len(pts_ordered) - 1):
@@ -610,14 +610,14 @@ def run_platform_calibration(frame: np.ndarray, lang: str) -> dict | None:
             corner, _ = PLATFORM_STEPS[step]
             color = PLATFORM_COLORS[corner]
             cv2.putText(img, S(lang, "platform_step", step=step+1, corner=corner),
-                        (tx, ty1), cv2.FONT_HERSHEY_DUPLEX, fs1, color, 1, cv2.LINE_AA)
+                        (tx, ty1), cv2.FONT_HERSHEY_COMPLEX, fs1, color, 1, cv2.LINE_AA)
             cv2.putText(img, S(lang, "platform_redo"),
-                        (tx, ty2), cv2.FONT_HERSHEY_DUPLEX, fs2, (180, 180, 180), 1, cv2.LINE_AA)
+                        (tx, ty2), cv2.FONT_HERSHEY_COMPLEX, fs2, (180, 180, 180), 1, cv2.LINE_AA)
         else:
             cv2.putText(img, S(lang, "platform_confirm"),
-                        (tx, ty1), cv2.FONT_HERSHEY_DUPLEX, fs1, (100, 255, 180), 1, cv2.LINE_AA)
+                        (tx, ty1), cv2.FONT_HERSHEY_COMPLEX, fs1, (100, 255, 180), 1, cv2.LINE_AA)
             cv2.putText(img, S(lang, "platform_skip"),
-                        (tx, ty2), cv2.FONT_HERSHEY_DUPLEX, fs2, (180, 180, 180), 1, cv2.LINE_AA)
+                        (tx, ty2), cv2.FONT_HERSHEY_COMPLEX, fs2, (180, 180, 180), 1, cv2.LINE_AA)
         pts_ordered = [state["points"].get(s[0]) for s in PLATFORM_STEPS if s[0] in state["points"]]
         if len(pts_ordered) >= 2:
             for i in range(len(pts_ordered) - 1):
@@ -634,7 +634,7 @@ def run_platform_calibration(frame: np.ndarray, lang: str) -> dict | None:
             cv2.circle(img, pt, dot_r, col, -1)
             cv2.circle(img, pt, dot_ro, (255, 255, 255), 1)
             cv2.putText(img, corner, (pt[0] + lbl_off, pt[1] + sc(img, 5)),
-                        cv2.FONT_HERSHEY_DUPLEX, lbl_fs, col, 1, cv2.LINE_AA)
+                        cv2.FONT_HERSHEY_COMPLEX, lbl_fs, col, 1, cv2.LINE_AA)
         return img
 
     def on_click(event, x, y, flags, param):
@@ -701,12 +701,12 @@ def confirm_pool_from_args(frame, cfg, lang):
         cv2.circle(img, pt, sc(img, 7), col, -1)
         cv2.circle(img, pt, sc(img, 9), (255, 255, 255), 1)
         cv2.putText(img, calib_cardinal_labels[cardinal],
-                    (pt[0] + sc(img, 12), pt[1] + sc(img, 5)), cv2.FONT_HERSHEY_DUPLEX, sc_f(img, 0.52), col, 1, cv2.LINE_AA)
+                    (pt[0] + sc(img, 12), pt[1] + sc(img, 5)), cv2.FONT_HERSHEY_COMPLEX, sc_f(img, 0.52), col, 1, cv2.LINE_AA)
     draw_transparent_banner(img, 0, 0, frame.shape[1], sc(img, 70))
     cv2.putText(img, S(lang, "confirm_title"),
-                (sc(img, 14), sc(img, 28)), cv2.FONT_HERSHEY_DUPLEX, sc_f(img, 0.65), (100, 255, 180), 1, cv2.LINE_AA)
+                (sc(img, 14), sc(img, 28)), cv2.FONT_HERSHEY_COMPLEX, sc_f(img, 0.65), (100, 255, 180), 1, cv2.LINE_AA)
     cv2.putText(img, S(lang, "confirm_hint"),
-                (sc(img, 14), sc(img, 56)), cv2.FONT_HERSHEY_DUPLEX, sc_f(img, 0.52), (180, 180, 180), 1, cv2.LINE_AA)
+                (sc(img, 14), sc(img, 56)), cv2.FONT_HERSHEY_COMPLEX, sc_f(img, 0.52), (180, 180, 180), 1, cv2.LINE_AA)
     window = "Pool Confirmation"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(window, min(frame.shape[1], 1280), min(frame.shape[0], 720))
@@ -734,12 +734,12 @@ def confirm_platform_from_args(frame, cfg, lang):
         cv2.circle(img, pt, sc(img, 7), col, -1)
         cv2.circle(img, pt, sc(img, 9), (255, 255, 255), 1)
         cv2.putText(img, corner_name, (pt[0] + sc(img, 12), pt[1] + sc(img, 5)),
-                    cv2.FONT_HERSHEY_DUPLEX, sc_f(img, 0.52), col, 1, cv2.LINE_AA)
+                    cv2.FONT_HERSHEY_COMPLEX, sc_f(img, 0.52), col, 1, cv2.LINE_AA)
     draw_transparent_banner(img, 0, 0, frame.shape[1], sc(img, 70))
     cv2.putText(img, S(lang, "platform_confirm_title"),
-                (sc(img, 14), sc(img, 28)), cv2.FONT_HERSHEY_DUPLEX, sc_f(img, 0.65), (100, 255, 180), 1, cv2.LINE_AA)
+                (sc(img, 14), sc(img, 28)), cv2.FONT_HERSHEY_COMPLEX, sc_f(img, 0.65), (100, 255, 180), 1, cv2.LINE_AA)
     cv2.putText(img, S(lang, "platform_confirm_hint"),
-                (sc(img, 14), sc(img, 56)), cv2.FONT_HERSHEY_DUPLEX, sc_f(img, 0.52), (180, 180, 180), 1, cv2.LINE_AA)
+                (sc(img, 14), sc(img, 56)), cv2.FONT_HERSHEY_COMPLEX, sc_f(img, 0.52), (180, 180, 180), 1, cv2.LINE_AA)
     window = "Platform Confirmation"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(window, min(frame.shape[1], 1280), min(frame.shape[0], 720))
@@ -989,7 +989,7 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm, lang, quad_exits=N
     cv2.rectangle(img, (x0, y0), (x1, y1), (70, 70, 70), 1)
     title_fs = sc_f(img, 0.48)
     cv2.putText(img, S(lang, "leaderboard_title"),
-                (x0 + pad, y0 + int(18 * s)), cv2.FONT_HERSHEY_DUPLEX, title_fs, (210, 210, 210), 1, cv2.LINE_AA)
+                (x0 + pad, y0 + int(18 * s)), cv2.FONT_HERSHEY_COMPLEX, title_fs, (210, 210, 210), 1, cv2.LINE_AA)
     row_fs   = sc_f(img, 0.42)
     col2_off = int(58 * s)
     col3_off = int(178 * s)
@@ -1001,11 +1001,11 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm, lang, quad_exits=N
         d_pct = (d_cm / total_dist_cm * 100) if total_dist_cm > 0 else 0.0
         color = QUADRANT_COLORS[q]
         row_y = y0 + header_h + rank * row_h + row_h - int(5 * s)
-        cv2.putText(img, f"#{rank+1} {q}", (x0 + pad, row_y), cv2.FONT_HERSHEY_DUPLEX, row_fs, color, 1, cv2.LINE_AA)
-        cv2.putText(img, f"T:{t_s:5.1f}s {t_pct:4.1f}%", (x0 + pad + col2_off, row_y), cv2.FONT_HERSHEY_DUPLEX, row_fs, (220, 220, 220), 1, cv2.LINE_AA)
-        cv2.putText(img, f"D:{d_cm:6.1f}cm {d_pct:4.1f}%", (x0 + pad + col3_off, row_y), cv2.FONT_HERSHEY_DUPLEX, row_fs, (255, 200, 50), 1, cv2.LINE_AA)
+        cv2.putText(img, f"#{rank+1} {q}", (x0 + pad, row_y), cv2.FONT_HERSHEY_COMPLEX, row_fs, color, 1, cv2.LINE_AA)
+        cv2.putText(img, f"T:{t_s:5.1f}s {t_pct:4.1f}%", (x0 + pad + col2_off, row_y), cv2.FONT_HERSHEY_COMPLEX, row_fs, (220, 220, 220), 1, cv2.LINE_AA)
+        cv2.putText(img, f"D:{d_cm:6.1f}cm {d_pct:4.1f}%", (x0 + pad + col3_off, row_y), cv2.FONT_HERSHEY_COMPLEX, row_fs, (255, 200, 50), 1, cv2.LINE_AA)
         if show_exits:
-            cv2.putText(img, f"X:{quad_exits.get(q, 0)}", (x0 + pad + col4_off, row_y), cv2.FONT_HERSHEY_DUPLEX, row_fs, (100, 200, 255), 1, cv2.LINE_AA)
+            cv2.putText(img, f"X:{quad_exits.get(q, 0)}", (x0 + pad + col4_off, row_y), cv2.FONT_HERSHEY_COMPLEX, row_fs, (100, 200, 255), 1, cv2.LINE_AA)
 
 ## Rat Detection
 
@@ -1034,15 +1034,15 @@ def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, p
         by = int(M["m01"] / M["m00"])
         if pool is not None and not point_in_ellipse(bx, by, *pool):
             continue
-        candidates.append((bx, by, area))
+        candidates.append((bx, by, area, cnt))
     if not candidates:
-        return None
+        return None, None
     if prev_pos is not None:
         candidates.sort(key=lambda c: euclidean_px(prev_pos, (c[0], c[1])))
     else:
         candidates.sort(key=lambda c: c[2], reverse=True)
-    bx, by, _ = candidates[0]
-    return (bx, by)
+    bx, by, _, winning_cnt = candidates[0]
+    return (bx, by), winning_cnt
 
 def interpolate_missing(records: list) -> list:
     n      = len(records)
@@ -1089,7 +1089,7 @@ def build_rerun_command(video_path, args, cfg):
         parts.append(f"--pool_radius_cm {args.pool_radius_cm}")
     if args.mog2_history != 120:
         parts.append(f"--mog2_history {args.mog2_history}")
-    if args.mog2_threshold != 40:
+    if args.mog2_threshold != 32:
         parts.append(f"--mog2_threshold {args.mog2_threshold}")
     if args.mog2_detect_shadow:
         parts.append("--mog2_detect_shadow")
@@ -1117,6 +1117,8 @@ def build_rerun_command(video_path, args, cfg):
         parts.append("--latency")
     if args.tracemapcolor is not None:
         parts.append(f"--tracemapcolor {args.tracemapcolor}")
+    if args.ratcolor is not None:
+        parts.append(f"--ratcolor {args.ratcolor}")
     parts.append(f"--pool_west {fmt_pt(cfg['pool_west'])}")
     parts.append(f"--pool_north {fmt_pt(cfg['pool_north'])}")
     parts.append(f"--pool_east {fmt_pt(cfg['pool_east'])}")
@@ -1139,7 +1141,7 @@ def main():
     parser.add_argument("--end",                 default=None,   type=float)
     parser.add_argument("--pool_radius_cm",      default=60,     type=float)
     parser.add_argument("--mog2_history",        default=120,    type=int)
-    parser.add_argument("--mog2_threshold",      default=40,     type=float)
+    parser.add_argument("--mog2_threshold",      default=32,     type=float)
     parser.add_argument("--mog2_detect_shadow",  default=False,  action="store_true")
     parser.add_argument("--morph_open_k",        default=3,      type=int)
     parser.add_argument("--morph_close_k",       default=15,     type=int)
@@ -1162,9 +1164,11 @@ def main():
     parser.add_argument("--latency",             default=False,  action="store_true")
     parser.add_argument("--tracemapcolor",       default=None,   type=str)
     parser.add_argument("--appmode",             default=False,  action="store_true")
+    parser.add_argument("--ratcolor",            default=None,   type=str)
     args = parser.parse_args()
 
     tracemap_color   = parse_tracemap_color(args.tracemapcolor)
+    rat_color        = parse_tracemap_color(args.ratcolor) if args.ratcolor else None
     lang             = args.language
     require_platform = needs_platform(args)
 
@@ -1356,7 +1360,7 @@ def main():
             break
 
         timestamp = (start_frame + frame_idx) / fps
-        pos       = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos)
+        pos, rat_contour = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos)
 
         if pos and prev_pos:
             seg_dist_cm = euclidean_cm(prev_pos, pos, scale_x, scale_y)
@@ -1432,6 +1436,8 @@ def main():
         })
 
         annotated = frame.copy()
+        if rat_contour is not None and rat_color is not None:
+            cv2.drawContours(annotated, [rat_contour], -1, rat_color, -1)
         cv2.ellipse(annotated, (cx, cy), (rx, ry), angle, 0, 360, (255, 100, 0), thickness=2)
         cv2.line(annotated, north, south, (255, 100, 0), 1)
         cv2.line(annotated, west,  east,  (255, 100, 0), 1)
@@ -1461,7 +1467,7 @@ def main():
             "SW": quadrant_label_pos(south, west),
             "SE": quadrant_label_pos(south, east),
         }.items():
-            cv2.putText(annotated, q, lp, cv2.FONT_HERSHEY_DUPLEX, sc_f(annotated, 0.55), QUADRANT_COLORS[q], 1, cv2.LINE_AA)
+            cv2.putText(annotated, q, lp, cv2.FONT_HERSHEY_COMPLEX, sc_f(annotated, 0.55), QUADRANT_COLORS[q], 1, cv2.LINE_AA)
 
         if pos:
             trail.append(pos)
@@ -1515,7 +1521,7 @@ def main():
         for li, (text, color) in enumerate(hud_lines):
             cv2.putText(annotated, text,
                         (hud_x + hud_pad, hud_y + hud_pad + (li + 1) * line_h - sc(annotated, 4)),
-                        cv2.FONT_HERSHEY_DUPLEX, hud_fs, color, 1, cv2.LINE_AA)
+                        cv2.FONT_HERSHEY_COMPLEX, hud_fs, color, 1, cv2.LINE_AA)
 
         total_q_time = sum(v["time_s"]  for v in q_stats.values())
         total_q_dist = sum(v["dist_cm"] for v in q_stats.values())

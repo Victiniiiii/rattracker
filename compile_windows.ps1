@@ -31,6 +31,9 @@ function Install-Rust {
     winget install Rustlang.Rustup --silent --accept-package-agreements --accept-source-agreements
 
     $env:Path += ";$env:USERPROFILE\.cargo\bin"
+
+    rustup install stable
+    rustup default stable
 }
 
 function Install-Python {

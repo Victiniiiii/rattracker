@@ -7,6 +7,8 @@ PYTHON_VERSION="3.12"
 
 cd "$PROJECT_ROOT"
 
+source "$HOME/.cargo/env" 2>/dev/null || true
+
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
@@ -76,7 +78,6 @@ setup_venv() {
 }
 
 install_tauri_cli() {
-    source "$HOME/.cargo/env"
     cargo install tauri-cli --locked || true
 }
 
@@ -108,7 +109,6 @@ build_python_sidecar() {
 }
 
 build_tauri() {
-    source "$HOME/.cargo/env"
     npm run tauri build
 }
 
@@ -117,8 +117,8 @@ main() {
     install_node
     install_rust
     install_python
-    install_tauri_cli
     setup_venv
+    install_tauri_cli
     install_frontend_deps
     build_python_sidecar
     build_tauri

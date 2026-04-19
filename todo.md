@@ -2,11 +2,9 @@
 
 - Make the top of the settings window fixed. So doesnt get lost while scrolling.
 - Some hiccups on translations. (rat)
-- Make dropdown color invert
 - Maybe make everything one row on top of the settings
 - In settings rows try to make everything flex, possibly one row but extend if needed
-- Exporting a profile should add the profile name. And importing a new profile should create one, not change the current one.
-- There is no need for initFileServer and fileUrl
+- Exporting a profile should add the profile name in the arguments. And importing a new profile should create one, not change the current one.
 
 - video preview feature. see how it looks before running the whole thing. Maybe pick the rat in a tool, then it auto adjusts some stuff.
 - Batch processing videos

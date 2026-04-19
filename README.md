@@ -7,12 +7,12 @@ A video analysis tool for tracking rodent movement in Morris Water Maze experime
 ## Table of Contents
 
 - [Requirements](#requirements)
-- [Python Script — Manual Setup](#python-script--manual-setup)
+- [Python Script - Manual Setup](#python-script--manual-setup)
   - [Windows](#windows-python)
   - [macOS](#macos-python)
   - [Linux](#linux-python)
   - [Script Usage](#script-usage)
-- [Desktop App — Compile from Source](#desktop-app--compile-from-source)
+- [Desktop App - Compile from Source](#desktop-app--compile-from-source)
   - [Automated (recommended)](#automated-recommended)
   - [Manual Compilation](#manual-compilation)
     - [Windows](#windows-compile)
@@ -31,7 +31,7 @@ A video analysis tool for tracking rodent movement in Morris Water Maze experime
 
 ---
 
-## Python Script — Manual Setup
+## Python Script - Manual Setup
 
 ### Windows (Python) {#windows-python}
 
@@ -130,7 +130,7 @@ Run `python main.py --help` for a full list of options.
 
 ---
 
-## Desktop App — Compile from Source
+## Desktop App - Compile from Source
 
 ### Automated (recommended)
 
@@ -143,7 +143,7 @@ Set-ExecutionPolicy Bypass -Scope Process
 .\compile_windows.ps1
 ```
 
-**macOS** — auto-detects Intel vs Apple Silicon
+**macOS** - auto-detects Intel vs Apple Silicon
 
 ```bash
 chmod +x compile_mac.sh
@@ -171,12 +171,12 @@ If you prefer to run each step yourself, follow the platform-specific instructio
 
 - [Node.js 20 LTS](https://nodejs.org/)
 - [Python 3.12](https://www.python.org/downloads/)
-- [Rust](https://rustup.rs/) — after installing, run:
+- [Rust](https://rustup.rs/) - after installing, run:
   ```powershell
   rustup install stable
   rustup default stable
   ```
-- [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) — select the **"Desktop development with C++"** workload
+- [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) - select the **"Desktop development with C++"** workload
 
 **2. Set up Python virtual environment**
 

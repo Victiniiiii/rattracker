@@ -50,7 +50,7 @@
 					<button id="btnCreateProfile" class="profileIconBtn" title="New profile">
 						<img src="assets/plus.svg" width="14" height="14" />
 					</button>
-					<select id="profileSelect" class="profileSelect"></select>
+					<select id="profileSelect"></select>
 					<button id="btnRenameProfile" class="profileIconBtn" title="Rename profile">
 						<img src="assets/pencil.svg" width="14" height="14" />
 					</button>
@@ -233,15 +233,15 @@
 			<div id="row1">
 				<button id="selectFileBtn" onclick="selectFile()" data-i18n="select_video">Select Video</button>
 				<span id="filePath" data-i18n-placeholder="no_file">No file selected</span>
-				<label class="inlineLabel" data-i18n="start_time">Start (s)<input type="number" id="startTime" min="0" step="0.1" /></label>
-				<label class="inlineLabel" data-i18n="end_time">End (s)<input type="number" id="endTime" min="0" step="0.1" /></label>
+				<label class="inlineLabel" data-i18n="start_time">Start (s)<input type="number" id="startTime" min="0" step="0.1" placeholder="Start Time" /></label>
+				<label class="inlineLabel" data-i18n="end_time">End (s)<input type="number" id="endTime" min="0" step="0.1" placeholder="End Time" /></label>
 				<label class="inlineLabel" data-i18n="pool_radius">Radius (cm)<input type="number" id="poolRadius" min="1" value="60" step="0.5" /></label>
 			</div>
 
 			<div id="row2">
 				<button id="runBtn" class="primaryBtn" disabled onclick="runScript()" data-i18n="run">Run</button>
 				<button id="cancelBtn" disabled onclick="cancelScript()" data-i18n="cancel">Cancel</button>
-				<span id="progressText">—</span>
+				<span id="progressText"></span>
 				<progress id="progressBar" value="0" max="100"></progress>
 				<span id="etaText"></span>
 				<div id="outputTabs">

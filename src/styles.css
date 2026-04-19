@@ -6,6 +6,18 @@
 	padding: 0;
 }
 
+/* Chrome, Safari, Edge, Opera */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 :root {
 	--bg: #1a1a1a;
 	--surface: #242424;
@@ -255,7 +267,7 @@ input[type="color"] {
 	background: var(--surface);
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
-	width: 540px;
+	width: 460px;
 	max-height: 88vh;
 	overflow-y: auto;
 	padding: 16px 24px 20px;
@@ -313,12 +325,15 @@ input[type="color"] {
 	border-color: var(--danger);
 }
 
-.profileSelect {
+#profileSelect {
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
 	flex: 1;
 	min-width: 0;
 	height: 28px;
-	background: var(--bg);
-	color: black;
+	background-color: var(--bg);
+	color: white;
 	border: 1px solid var(--border);
 	border-radius: var(--radius-xs);
 	padding: 0 8px;
@@ -327,7 +342,11 @@ input[type="color"] {
 	overflow-y: auto;
 }
 
-.profileSelect:focus {
+#profileSelect option {
+	background-color: var(--bg);
+}
+
+#profileSelect:focus {
 	outline: none;
 	border-color: var(--accent);
 }

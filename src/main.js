@@ -548,7 +548,7 @@ function showMiniModal(type, prefill = "") {
 	document.getElementById("miniModalInput").readOnly = c.readonly;
 	document.getElementById("miniModalConfirm").textContent = c.btn;
 	document.getElementById("miniModalInput").value = prefill;
-    
+
 	modal.dataset.type = type;
 	modal.hidden = false;
 	const input = document.getElementById("miniModalInput");
@@ -867,7 +867,7 @@ function cancelScript() {
 	}
 	setUIRunning(false);
 	document.getElementById("progressBar").value = 0;
-	document.getElementById("progressText").textContent = "—";
+	document.getElementById("progressText").textContent = "";
 	document.getElementById("etaText").textContent = "";
 }
 

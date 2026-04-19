@@ -20,6 +20,9 @@ async function fetchText(path) {
 }
 
 const STORAGE_KEY = "rattracker_config";
+const PROFILES_KEY = "rattracker_profiles";
+const ACTIVE_PROFILE_KEY = "rattracker_active_profile";
+const DEFAULT_PROFILE_NAME = "Default";
 
 const DEFAULTS = {
 	mog2_history_s: 4.0,
@@ -263,22 +266,309 @@ let selectedFile = null;
 let pythonProcess = null;
 let cfg = { ...DEFAULTS };
 
-function loadConfig() {
+function loadProfiles() {
 	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
-		if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
-	} catch (error) {
-		console.warn("Error reading localStorage:", error);
-	}
-	return { ...DEFAULTS };
+		const raw = localStorage.getItem(PROFILES_KEY);
+		if (raw) {
+			const parsed = JSON.parse(raw);
+			if (!parsed[DEFAULT_PROFILE_NAME]) parsed[DEFAULT_PROFILE_NAME] = { ...DEFAULTS };
+			return parsed;
+		}
+	} catch {}
+	return { [DEFAULT_PROFILE_NAME]: { ...DEFAULTS } };
+}
+
+function saveProfiles(p) {
+	try {
+		localStorage.setItem(PROFILES_KEY, JSON.stringify(p));
+	} catch {}
+}
+
+function loadActiveProfileName() {
+	return localStorage.getItem(ACTIVE_PROFILE_KEY) || DEFAULT_PROFILE_NAME;
+}
+
+function saveActiveProfileName(name) {
+	localStorage.setItem(ACTIVE_PROFILE_KEY, name);
+}
+
+let profiles = loadProfiles();
+let activeProfileName = loadActiveProfileName();
+if (!profiles[activeProfileName]) activeProfileName = DEFAULT_PROFILE_NAME;
+
+function loadConfig() {
+	return { ...DEFAULTS, ...profiles[activeProfileName] };
 }
 
 function saveConfig(newCfg) {
+	profiles[activeProfileName] = { ...newCfg };
+	saveProfiles(profiles);
 	try {
 		localStorage.setItem(STORAGE_KEY, JSON.stringify(newCfg));
-	} catch (error) {
-		console.warn("Error saving to localStorage:", error);
+	} catch {}
+}
+
+function cfgToShareString(c) {
+	const parts = [];
+	parts.push(`--mog2_history_s ${c.mog2_history_s}`);
+	parts.push(`--mog2_threshold ${c.mog2_threshold}`);
+	if (c.mog2_detect_shadow) parts.push("--mog2_detect_shadow");
+	parts.push(`--morph_open_k ${c.morph_open_k}`);
+	parts.push(`--morph_close_k ${c.morph_close_k}`);
+	parts.push(`--min_contour_area ${c.min_contour_area}`);
+	parts.push(`--max_contour_area ${c.max_contour_area}`);
+	parts.push(`--trail_s ${c.trail_s}`);
+	parts.push(`--debug_frames ${c.debug_frames}`);
+	if (c.pool_west) parts.push(`--pool_west ${c.pool_west}`);
+	if (c.pool_north) parts.push(`--pool_north ${c.pool_north}`);
+	if (c.pool_east) parts.push(`--pool_east ${c.pool_east}`);
+	if (c.pool_south) parts.push(`--pool_south ${c.pool_south}`);
+	if (c.platform_nw) parts.push(`--platform_nw ${c.platform_nw}`);
+	if (c.platform_ne) parts.push(`--platform_ne ${c.platform_ne}`);
+	if (c.platform_se) parts.push(`--platform_se ${c.platform_se}`);
+	if (c.platform_sw) parts.push(`--platform_sw ${c.platform_sw}`);
+	if (c.quadrantcross) parts.push("--quadrantcross");
+	if (c.platformcross) parts.push("--platformcross");
+	if (c.paraplatform_enabled) parts.push(`--paraplatform ${c.paraplatform_scale ?? 4}`);
+	if (c.proximity) parts.push("--proximity");
+	if (c.latency) parts.push("--latency");
+	if (c.tracemapcolor_enabled && c.tracemapcolor) parts.push(`--tracemapcolor ${hexColorToRgbString(c.tracemapcolor)}`);
+	if (c.ratcolor_enabled && c.ratcolor) parts.push(`--ratcolor ${hexColorToRgbString(c.ratcolor)}`);
+	return parts.join(" ");
+}
+
+function shareStringToCfg(str) {
+	const result = { ...DEFAULTS };
+	const tokens = str.trim().split(/\s+/);
+	let i = 0;
+	while (i < tokens.length) {
+		const t = tokens[i],
+			next = tokens[i + 1];
+		switch (t) {
+			case "--mog2_history_s":
+				result.mog2_history_s = parseFloat(next);
+				i += 2;
+				break;
+			case "--mog2_threshold":
+				result.mog2_threshold = parseFloat(next);
+				i += 2;
+				break;
+			case "--mog2_detect_shadow":
+				result.mog2_detect_shadow = true;
+				i += 1;
+				break;
+			case "--morph_open_k":
+				result.morph_open_k = parseInt(next);
+				i += 2;
+				break;
+			case "--morph_close_k":
+				result.morph_close_k = parseInt(next);
+				i += 2;
+				break;
+			case "--min_contour_area":
+				result.min_contour_area = parseFloat(next);
+				i += 2;
+				break;
+			case "--max_contour_area":
+				result.max_contour_area = parseFloat(next);
+				i += 2;
+				break;
+			case "--trail_s":
+				result.trail_s = parseFloat(next);
+				i += 2;
+				break;
+			case "--debug_frames":
+				result.debug_frames = parseInt(next);
+				i += 2;
+				break;
+			case "--pool_west":
+				result.pool_west = next;
+				i += 2;
+				break;
+			case "--pool_north":
+				result.pool_north = next;
+				i += 2;
+				break;
+			case "--pool_east":
+				result.pool_east = next;
+				i += 2;
+				break;
+			case "--pool_south":
+				result.pool_south = next;
+				i += 2;
+				break;
+			case "--platform_nw":
+				result.platform_nw = next;
+				i += 2;
+				break;
+			case "--platform_ne":
+				result.platform_ne = next;
+				i += 2;
+				break;
+			case "--platform_se":
+				result.platform_se = next;
+				i += 2;
+				break;
+			case "--platform_sw":
+				result.platform_sw = next;
+				i += 2;
+				break;
+			case "--quadrantcross":
+				result.quadrantcross = true;
+				i += 1;
+				break;
+			case "--platformcross":
+				result.platformcross = true;
+				i += 1;
+				break;
+			case "--paraplatform":
+				result.paraplatform_enabled = true;
+				result.paraplatform_scale = parseInt(next) || 4;
+				i += 2;
+				break;
+			case "--proximity":
+				result.proximity = true;
+				i += 1;
+				break;
+			case "--latency":
+				result.latency = true;
+				i += 1;
+				break;
+			case "--tracemapcolor":
+				result.tracemapcolor_enabled = true;
+				result.tracemapcolor = rgbStringToHex(next);
+				i += 2;
+				break;
+			case "--ratcolor":
+				result.ratcolor_enabled = true;
+				result.ratcolor = rgbStringToHex(next);
+				i += 2;
+				break;
+			default:
+				i += 1;
+		}
 	}
+	return result;
+}
+
+function hexColorToRgbString(hex) {
+	const clean = hex.replace("#", "");
+	const bigint = parseInt(clean, 16);
+	return `${(bigint >> 16) & 255},${(bigint >> 8) & 255},${bigint & 255}`;
+}
+
+function rgbStringToHex(rgb) {
+	const parts = rgb.split(",").map(Number);
+	if (parts.length != 3) return "#00ffff";
+	return "#" + parts.map(n => n.toString(16).padStart(2, "0")).join("");
+}
+
+function renderProfileBar() {
+	const select = document.getElementById("profileSelect");
+	select.innerHTML = "";
+	for (const name of Object.keys(profiles)) {
+		const opt = document.createElement("option");
+		opt.value = name;
+		opt.textContent = name;
+		if (name == activeProfileName) opt.selected = true;
+		select.appendChild(opt);
+	}
+	const isDefault = activeProfileName == DEFAULT_PROFILE_NAME;
+	document.getElementById("btnRenameProfile").disabled = isDefault;
+	document.getElementById("btnDeleteProfile").disabled = isDefault;
+}
+
+function switchProfile(name) {
+	if (!profiles[name]) return;
+	activeProfileName = name;
+	saveActiveProfileName(name);
+	cfg = loadConfig();
+	populateForm(cfg);
+	renderProfileBar();
+}
+
+function createProfile(name) {
+	const trimmed = name.trim();
+	if (!trimmed) return;
+	profiles[trimmed] = { ...cfg };
+	saveProfiles(profiles);
+	activeProfileName = trimmed;
+	saveActiveProfileName(trimmed);
+	renderProfileBar();
+}
+
+function renameProfile(newName) {
+	const trimmed = newName.trim();
+	if (!trimmed || trimmed == activeProfileName || activeProfileName == DEFAULT_PROFILE_NAME) return;
+	profiles[trimmed] = profiles[activeProfileName];
+	delete profiles[activeProfileName];
+	activeProfileName = trimmed;
+	saveActiveProfileName(trimmed);
+	saveProfiles(profiles);
+	renderProfileBar();
+}
+
+function deleteProfile() {
+	if (activeProfileName == DEFAULT_PROFILE_NAME) return;
+	delete profiles[activeProfileName];
+	activeProfileName = DEFAULT_PROFILE_NAME;
+	saveActiveProfileName(activeProfileName);
+	saveProfiles(profiles);
+	cfg = loadConfig();
+	populateForm(cfg);
+	renderProfileBar();
+}
+
+function shareProfile() {
+	const str = cfgToShareString(cfg);
+	navigator.clipboard.writeText(str).catch(() => {});
+	showMiniModal("share", str);
+}
+
+function importProfile(str) {
+	const imported = shareStringToCfg(str.trim());
+	cfg = { ...cfg, ...imported };
+	profiles[activeProfileName] = { ...cfg };
+	saveProfiles(profiles);
+	populateForm(cfg);
+}
+
+function showMiniModal(type, prefill = "") {
+	const modal = document.getElementById("miniModal");
+	const configs = {
+		create: { title: "New Profile Name", placeholder: "e.g. Lab A Setup", btn: "Create", readonly: false },
+		rename: { title: "Rename Profile", placeholder: "New name…", btn: "Rename", readonly: false },
+		import: { title: "Import Profile", placeholder: "Paste share string…", btn: "Import", readonly: false },
+		share: { title: "Share Profile", placeholder: "", btn: "Copy", readonly: true },
+	};
+
+	const c = configs[type];
+	document.getElementById("miniModalTitle").textContent = c.title;
+	document.getElementById("miniModalInput").placeholder = c.placeholder;
+	document.getElementById("miniModalInput").readOnly = c.readonly;
+	document.getElementById("miniModalConfirm").textContent = c.btn;
+	document.getElementById("miniModalInput").value = prefill;
+    
+	modal.dataset.type = type;
+	modal.hidden = false;
+	const input = document.getElementById("miniModalInput");
+	input.focus();
+	input.select();
+}
+
+function closeMiniModal() {
+	document.getElementById("miniModal").hidden = true;
+	document.getElementById("miniModalInput").value = "";
+}
+
+function confirmMiniModal() {
+	const type = document.getElementById("miniModal").dataset.type;
+	const val = document.getElementById("miniModalInput").value;
+	if (type == "create" && val.trim()) createProfile(val);
+	else if (type == "rename" && val.trim()) renameProfile(val);
+	else if (type == "import" && val.trim()) importProfile(val);
+	else if (type == "share") navigator.clipboard.writeText(val).catch(() => {});
+	closeMiniModal();
 }
 
 function translate(key) {
@@ -286,24 +576,18 @@ function translate(key) {
 }
 
 function applyI18n() {
-	document.querySelectorAll("[data-i18n]").forEach(element => {
-		const key = element.getAttribute("data-i18n");
-		const input = element.querySelector("input");
-		if (input) {
-			element.childNodes[0].textContent = translate(key);
-		} else {
-			element.textContent = translate(key);
-		}
+	document.querySelectorAll("[data-i18n]").forEach(el => {
+		const key = el.getAttribute("data-i18n");
+		const input = el.querySelector("input");
+		if (input) el.childNodes[0].textContent = translate(key);
+		else el.textContent = translate(key);
 	});
 
-	document.querySelectorAll("[data-i18n-desc]").forEach(element => {
-		element.textContent = translate(element.getAttribute("data-i18n-desc"));
+	document.querySelectorAll("[data-i18n-desc]").forEach(el => {
+		el.textContent = translate(el.getAttribute("data-i18n-desc"));
 	});
 
-	if (!selectedFile) {
-		document.getElementById("filePath").textContent = translate("no_file");
-	}
-
+	if (!selectedFile) document.getElementById("filePath").textContent = translate("no_file");
 	const meta = LANG_META[cfg.language];
 	document.getElementById("langFlagSelected").src = meta.flag;
 	document.getElementById("langNameSelected").textContent = meta.name;
@@ -323,36 +607,22 @@ function selectLang(lang) {
 
 document.addEventListener("click", event => {
 	const dropdown = document.getElementById("langDropdown");
-	if (!dropdown.contains(event.target)) {
-		document.getElementById("langMenu").hidden = true;
-	}
+	if (!dropdown.contains(event.target)) document.getElementById("langMenu").hidden = true;
 });
 
-function hexColorToRgbString(hex) {
-	const clean = hex.replace("#", "");
-	const bigint = parseInt(clean, 16);
-	const red = (bigint >> 16) & 255;
-	const green = (bigint >> 8) & 255;
-	const blue = bigint & 255;
-	return `${red},${green},${blue}`;
-}
-
 function updateParaplatformScaleVisibility() {
-	const enabled = document.getElementById("paraplatform_enabled").checked;
-	const scaleRow = document.getElementById("paraplatformScaleRow");
-	if (scaleRow) scaleRow.hidden = !enabled;
+	const row = document.getElementById("paraplatformScaleRow");
+	if (row) row.hidden = !document.getElementById("paraplatform_enabled").checked;
 }
 
 function updateTracemapColorVisibility() {
-	const enabled = document.getElementById("tracemapcolor_enabled").checked;
-	const colorRow = document.getElementById("tracemapColorRow");
-	if (colorRow) colorRow.hidden = !enabled;
+	const row = document.getElementById("tracemapColorRow");
+	if (row) row.hidden = !document.getElementById("tracemapcolor_enabled").checked;
 }
 
 function updateRatColorVisibility() {
-	const enabled = document.getElementById("ratcolor_enabled").checked;
-	const colorRow = document.getElementById("ratColorRow");
-	if (colorRow) colorRow.hidden = !enabled;
+	const row = document.getElementById("ratColorRow");
+	if (row) row.hidden = !document.getElementById("ratcolor_enabled").checked;
 }
 
 function populateForm(formCfg) {
@@ -360,42 +630,41 @@ function populateForm(formCfg) {
 	for (const [key, value] of Object.entries(formCfg)) {
 		const input = form.elements[key];
 		if (!input) continue;
-		if (input.type == "checkbox") {
-			input.checked = !!value;
-		} else {
-			input.value = value ?? "";
-		}
+		if (input.type == "checkbox") input.checked = !!value;
+		else input.value = value ?? "";
 	}
 	updateParaplatformScaleVisibility();
 	updateTracemapColorVisibility();
 	updateRatColorVisibility();
 }
 
-function readForm() {
+function onFieldChange(element) {
+	if (!element.name) return;
+	if (element.type == "checkbox") cfg[element.name] = element.checked;
+	else if (element.type == "number") cfg[element.name] = element.value == "" ? null : Number(element.value);
+	else cfg[element.name] = element.value;
+	saveConfig(cfg);
+
+	if (element.name == "paraplatform_enabled") updateParaplatformScaleVisibility();
+	if (element.name == "tracemapcolor_enabled") updateTracemapColorVisibility();
+	if (element.name == "ratcolor_enabled") updateRatColorVisibility();
+}
+
+function attachFormListeners() {
 	const form = document.getElementById("configForm");
-	const result = {};
 	for (const element of form.elements) {
 		if (!element.name) continue;
-		if (element.type == "checkbox") {
-			result[element.name] = element.checked;
-		} else if (element.type == "number") {
-			result[element.name] = element.value == "" ? null : Number(element.value);
-		} else {
-			result[element.name] = element.value;
-		}
+		const evt = element.type == "checkbox" || element.type == "color" ? "change" : "input";
+		element.addEventListener(evt, () => onFieldChange(element));
 	}
-	return result;
 }
 
 function buildArgs(filePath, currentCfg) {
 	const args = ["--video", filePath, "--language", currentCfg.language];
-
 	const startValue = document.getElementById("startTime").value;
 	if (startValue != "") args.push("--start", startValue);
-
 	const endValue = document.getElementById("endTime").value;
 	if (endValue != "") args.push("--end", endValue);
-
 	args.push("--pool_radius_cm", document.getElementById("poolRadius").value);
 	args.push("--mog2_history_s", String(currentCfg.mog2_history_s));
 	args.push("--mog2_threshold", String(currentCfg.mog2_threshold));
@@ -406,36 +675,21 @@ function buildArgs(filePath, currentCfg) {
 	args.push("--max_contour_area", String(currentCfg.max_contour_area));
 	args.push("--trail_s", String(currentCfg.trail_s));
 	args.push("--debug_frames", String(currentCfg.debug_frames));
-
 	if (currentCfg.pool_west) args.push("--pool_west", currentCfg.pool_west);
 	if (currentCfg.pool_north) args.push("--pool_north", currentCfg.pool_north);
 	if (currentCfg.pool_east) args.push("--pool_east", currentCfg.pool_east);
 	if (currentCfg.pool_south) args.push("--pool_south", currentCfg.pool_south);
-
 	if (currentCfg.platform_nw) args.push("--platform_nw", currentCfg.platform_nw);
 	if (currentCfg.platform_ne) args.push("--platform_ne", currentCfg.platform_ne);
 	if (currentCfg.platform_se) args.push("--platform_se", currentCfg.platform_se);
 	if (currentCfg.platform_sw) args.push("--platform_sw", currentCfg.platform_sw);
-
 	if (currentCfg.quadrantcross) args.push("--quadrantcross");
 	if (currentCfg.platformcross) args.push("--platformcross");
-
-	if (currentCfg.paraplatform_enabled) {
-		const scale = currentCfg.paraplatform_scale ?? 4;
-		args.push("--paraplatform", String(scale));
-	}
-
+	if (currentCfg.paraplatform_enabled) args.push("--paraplatform", String(currentCfg.paraplatform_scale ?? 4));
 	if (currentCfg.proximity) args.push("--proximity");
 	if (currentCfg.latency) args.push("--latency");
-
-	if (currentCfg.tracemapcolor_enabled && currentCfg.tracemapcolor) {
-		args.push("--tracemapcolor", hexColorToRgbString(currentCfg.tracemapcolor));
-	}
-
-	if (currentCfg.ratcolor_enabled && currentCfg.ratcolor) {
-		args.push("--ratcolor", hexColorToRgbString(currentCfg.ratcolor));
-	}
-
+	if (currentCfg.tracemapcolor_enabled && currentCfg.tracemapcolor) args.push("--tracemapcolor", hexColorToRgbString(currentCfg.tracemapcolor));
+	if (currentCfg.ratcolor_enabled && currentCfg.ratcolor) args.push("--ratcolor", hexColorToRgbString(currentCfg.ratcolor));
 	args.push("--appmode");
 	return args;
 }
@@ -460,9 +714,10 @@ function setOutputTabsEnabled(enabled) {
 function renderCsvTable(csvText) {
 	const lines = csvText.trim().split("\n");
 	if (!lines.length) return;
+
 	const headers = lines[0].split(",");
 	let html = "<table><thead><tr>";
-	for (const header of headers) html += `<th>${header}</th>`;
+	for (const h of headers) html += `<th>${h}</th>`;
 	html += "</tr></thead><tbody>";
 	for (let i = 1; i < lines.length; i++) {
 		const cols = lines[i].split(",");
@@ -470,6 +725,7 @@ function renderCsvTable(csvText) {
 		for (const col of cols) html += `<td>${col}</td>`;
 		html += "</tr>";
 	}
+
 	html += "</tbody></table>";
 	document.getElementById("csvTable").innerHTML = html;
 }
@@ -486,19 +742,10 @@ function openSettings() {
 
 function closeSettings() {
 	document.getElementById("settingsOverlay").hidden = true;
-	populateForm(cfg);
 }
 
 function overlayClose(event) {
 	if (event.target == document.getElementById("settingsOverlay")) closeSettings();
-}
-
-async function saveSettings(event) {
-	event.preventDefault();
-	const formData = readForm();
-	cfg = { ...cfg, ...formData };
-	saveConfig(cfg);
-	document.getElementById("settingsOverlay").hidden = true;
 }
 
 async function selectFile() {
@@ -508,20 +755,21 @@ async function selectFile() {
 			document.getElementById("filePath").textContent = selectedFile;
 			document.getElementById("runBtn").disabled = false;
 		}
-	} catch (error) {
-		console.log("No file selected:", error);
+	} catch (e) {
+		console.log("No file selected:", e);
 	}
 }
 
 function switchTab(tab) {
 	if (tab.disabled) return;
+
 	document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
 	document.querySelectorAll(".tabContent").forEach(t => {
 		t.hidden = true;
 	});
+
 	tab.classList.add("active");
-	const tabId = "tab" + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1);
-	document.getElementById(tabId).hidden = false;
+	document.getElementById("tab" + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)).hidden = false;
 }
 
 async function runScript() {
@@ -535,9 +783,9 @@ async function runScript() {
 
 	const args = buildArgs(selectedFile, cfg);
 	pythonProcess = Command.sidecar("bin/main", args);
-
 	pythonProcess.stdout.on("data", async line => {
 		let parsed;
+
 		try {
 			parsed = JSON.parse(line);
 		} catch {
@@ -556,14 +804,13 @@ async function runScript() {
 			if (parsed.pool_north) cfg.pool_north = formatPoint(parsed.pool_north);
 			if (parsed.pool_east) cfg.pool_east = formatPoint(parsed.pool_east);
 			if (parsed.pool_south) cfg.pool_south = formatPoint(parsed.pool_south);
-
 			if (parsed.platform_nw) cfg.platform_nw = formatPoint(parsed.platform_nw);
 			if (parsed.platform_ne) cfg.platform_ne = formatPoint(parsed.platform_ne);
 			if (parsed.platform_se) cfg.platform_se = formatPoint(parsed.platform_se);
 			if (parsed.platform_sw) cfg.platform_sw = formatPoint(parsed.platform_sw);
 
 			saveConfig(cfg);
-
+			populateForm(cfg);
 			setOutputTabsEnabled(true);
 
 			const firstTab = document.querySelector("#outputTabs .tab");
@@ -575,27 +822,27 @@ async function runScript() {
 				const videoEl = document.getElementById("outputVideo");
 				videoEl.src = fileUrl(parsed.video_out);
 				videoEl.load();
-			} catch (error) {
-				console.error("Video load error:", error);
+			} catch (e) {
+				console.error("Video load error:", e);
 			}
 
 			try {
 				renderCsvTable(await fetchText(parsed.csv_out));
-			} catch (error) {
-				console.error("CSV load error:", error);
+			} catch (e) {
+				console.error("CSV load error:", e);
 			}
 
 			try {
 				document.getElementById("summaryText").textContent = await fetchText(parsed.summary_out);
-			} catch (error) {
-				console.error("Summary load error:", error);
+			} catch (e) {
+				console.error("Summary load error:", e);
 			}
 
 			try {
 				document.getElementById("heatmap").style.backgroundImage = `url("${fileUrl(parsed.heatmap_out)}")`;
 				document.getElementById("tracemap").style.backgroundImage = `url("${fileUrl(parsed.tracemap_out)}")`;
-			} catch (error) {
-				console.error("Image load error:", error);
+			} catch (e) {
+				console.error("Image load error:", e);
 			}
 
 			setUIRunning(false);
@@ -605,13 +852,11 @@ async function runScript() {
 	pythonProcess.stderr.on("data", line => {
 		console.error("stderr:", line);
 	});
-
 	pythonProcess.on("close", code => {
 		console.log("Process exited:", code);
 		pythonProcess = null;
 		setUIRunning(false);
 	});
-
 	await pythonProcess.spawn();
 }
 
@@ -631,14 +876,28 @@ document.addEventListener("DOMContentLoaded", () => {
 	cfg = loadConfig();
 	populateForm(cfg);
 	applyI18n();
+	attachFormListeners();
+	renderProfileBar();
 	setUIRunning(false);
 	setOutputTabsEnabled(false);
+
+	document.getElementById("profileSelect").addEventListener("change", e => switchProfile(e.target.value));
+	document.getElementById("miniModalConfirm").addEventListener("click", confirmMiniModal);
+	document.getElementById("miniModalCancel").addEventListener("click", closeMiniModal);
+	document.getElementById("miniModalInput").addEventListener("keydown", e => {
+		if (e.key == "Enter") confirmMiniModal();
+		if (e.key == "Escape") closeMiniModal();
+	});
+	document.getElementById("btnCreateProfile").addEventListener("click", () => showMiniModal("create"));
+	document.getElementById("btnRenameProfile").addEventListener("click", () => showMiniModal("rename", activeProfileName));
+	document.getElementById("btnDeleteProfile").addEventListener("click", deleteProfile);
+	document.getElementById("btnShareProfile").addEventListener("click", shareProfile);
+	document.getElementById("btnImportProfile").addEventListener("click", () => showMiniModal("import"));
 });
 
 window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.overlayClose = overlayClose;
-window.saveSettings = saveSettings;
 window.updateParaplatformScaleVisibility = updateParaplatformScaleVisibility;
 window.updateTracemapColorVisibility = updateTracemapColorVisibility;
 window.updateRatColorVisibility = updateRatColorVisibility;

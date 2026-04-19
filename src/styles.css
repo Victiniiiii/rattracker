@@ -16,8 +16,10 @@
 	--accent: #4a9eff;
 	--accent-hover: #3a8eef;
 	--danger: #e05252;
+	--danger-hover: #c94444;
 	--radius: 8px;
 	--radius-sm: 5px;
+	--radius-xs: 4px;
 }
 
 body {
@@ -223,6 +225,17 @@ input[type="checkbox"] {
 	accent-color: var(--accent);
 }
 
+input[type="color"] {
+	width: 48px;
+	height: 32px;
+	padding: 2px;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-xs);
+	background: none;
+	cursor: pointer;
+	margin-top: 4px;
+}
+
 #settingsOverlay {
 	position: fixed;
 	inset: 0;
@@ -238,20 +251,21 @@ input[type="checkbox"] {
 }
 
 #settingsPanel {
+	position: relative;
 	background: var(--surface);
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
-	width: 520px;
+	width: 540px;
 	max-height: 88vh;
 	overflow-y: auto;
-	padding: 16px 24px;
+	padding: 16px 24px 20px;
 }
 
 #settingsHeader {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: 12px;
+	margin-bottom: 10px;
 }
 
 #settingsHeader h2 {
@@ -259,21 +273,129 @@ input[type="checkbox"] {
 	font-weight: 600;
 }
 
-#configForm h3 {
+#profileBar {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-bottom: 14px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--border);
+}
+
+.profileIconBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	background: var(--surface2);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-xs);
+	cursor: pointer;
+	flex-shrink: 0;
+	transition:
+		background 0.15s,
+		border-color 0.15s;
+}
+
+.profileIconBtn:hover:not(:disabled) {
+	background: var(--border);
+}
+
+.profileIconBtn:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+
+.profileIconBtnDanger:hover:not(:disabled) {
+	background: var(--danger);
+	border-color: var(--danger);
+}
+
+.profileSelect {
+	flex: 1;
+	min-width: 0;
+	height: 28px;
+	background: var(--bg);
+	color: black;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-xs);
+	padding: 0 8px;
 	font-size: 13px;
+	cursor: pointer;
+	overflow-y: auto;
+}
+
+.profileSelect:focus {
+	outline: none;
+	border-color: var(--accent);
+}
+
+#miniModal {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.55);
+	border-radius: var(--radius);
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+#miniModal[hidden] {
+	display: none;
+}
+
+#miniModalBox {
+	background: var(--surface2);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 16px 18px;
+	width: 300px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+#miniModalTitle {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text);
+}
+
+#miniModalBox input[type="text"] {
+	margin-top: 0;
+	width: 100%;
+}
+
+#miniModalBtns {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+}
+
+#miniModalBtns button {
+	padding: 6px 14px;
+	font-size: 12px;
+}
+
+#configForm h3 {
+	font-size: 11px;
 	font-weight: 600;
 	color: var(--text-muted);
 	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	margin: 12px 0 8px;
+	letter-spacing: 0.6px;
+	margin: 14px 0 8px;
 	padding-bottom: 5px;
 	border-bottom: 1px solid var(--border);
 }
 
-.formGrid {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 8px;
+.formCol {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
 }
 
 label {
@@ -289,6 +411,7 @@ label {
 	gap: 8px;
 	color: var(--text);
 	font-size: 13px;
+	cursor: pointer;
 }
 
 .checkLabel input {
@@ -296,19 +419,40 @@ label {
 	width: auto;
 }
 
-.note {
-	font-size: 12px;
-	color: var(--text-muted);
-	margin-bottom: 6px;
+.formField {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
 }
 
-#settingsBtns {
-	display: flex;
-	gap: 8px;
-	justify-content: flex-end;
-	margin-top: 14px;
-	padding-top: 12px;
-	border-top: 1px solid var(--border);
+.formField label,
+.formField .checkLabel {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--text);
+}
+
+.formField input[type="number"],
+.formField input[type="text"] {
+	width: 100%;
+}
+
+.formFieldCheck {
+	justify-content: flex-start;
+}
+
+.fieldDesc {
+	margin: 1px 0 2px;
+	font-size: 11px;
+	color: var(--text-muted);
+	line-height: 1.45;
+}
+
+.sectionNote {
+	margin: -4px 0 8px;
+	font-size: 11px;
+	color: var(--text-muted);
+	font-style: italic;
 }
 
 #appBody {
@@ -523,64 +667,4 @@ progress {
 	opacity: 0.4;
 	cursor: not-allowed;
 	pointer-events: none;
-}
-
-.fieldDesc {
-	margin: 2px 0 6px 0;
-	font-size: 0.75rem;
-	color: #888;
-	line-height: 1.4;
-}
-
-.sectionNote {
-	margin: -6px 0 10px 0;
-	font-size: 0.75rem;
-	color: #888;
-	font-style: italic;
-}
-
-.formField {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-}
-
-.formField label {
-	font-size: 0.85rem;
-	font-weight: 500;
-}
-
-.formField input[type="number"],
-.formField input[type="text"] {
-	width: 100%;
-	box-sizing: border-box;
-}
-
-.formFieldCheck {
-	justify-content: flex-start;
-}
-
-.checkLabel {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	cursor: pointer;
-	font-size: 0.85rem;
-	font-weight: 500;
-}
-
-.checkLabel input[type="checkbox"] {
-	width: 15px;
-	height: 15px;
-	flex-shrink: 0;
-}
-
-input[type="color"] {
-	width: 48px;
-	height: 32px;
-	padding: 2px;
-	border: 1px solid #444;
-	border-radius: 4px;
-	background: none;
-	cursor: pointer;
 }

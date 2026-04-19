@@ -7,15 +7,15 @@
 }
 
 /* Chrome, Safari, Edge, Opera */
-input[type=number]::-webkit-outer-spin-button,
-input[type=number]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
 }
 
 /* Firefox */
-input[type=number] {
-  -moz-appearance: textfield;
+input[type="number"] {
+	-moz-appearance: textfield;
 }
 
 :root {
@@ -267,31 +267,43 @@ input[type="color"] {
 	background: var(--surface);
 	border: 1px solid var(--border);
 	border-radius: var(--radius);
-	width: 460px;
+	width: 500px;
 	max-height: 88vh;
 	overflow-y: auto;
-	padding: 16px 24px 20px;
+	display: flex;
+	flex-direction: column;
 }
 
 #settingsHeader {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	background: var(--surface);
+	border-bottom: 1px solid var(--border);
+	padding: 10px 16px;
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	margin-bottom: 10px;
+	gap: 4px;
 }
 
 #settingsHeader h2 {
-	font-size: 16px;
+	font-size: 15px;
 	font-weight: 600;
+	margin-right: 6px;
+	white-space: nowrap;
 }
 
 #profileBar {
 	display: flex;
 	align-items: center;
 	gap: 4px;
-	margin-bottom: 14px;
-	padding-bottom: 12px;
-	border-bottom: 1px solid var(--border);
+}
+
+#profileBar {
+	display: flex;
+	align-items: center;
+	gap: 4px;
 }
 
 .profileIconBtn {
@@ -351,12 +363,15 @@ input[type="color"] {
 	border-color: var(--accent);
 }
 
+#configForm {
+	padding: 12px 16px 20px;
+}
+
 #miniModal {
-	position: absolute;
+	position: fixed;
 	inset: 0;
 	background: rgba(0, 0, 0, 0.55);
-	border-radius: var(--radius);
-	z-index: 10;
+	z-index: 200;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -414,7 +429,7 @@ input[type="color"] {
 .formCol {
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
+	gap: 8px;
 }
 
 label {
@@ -435,13 +450,56 @@ label {
 
 .checkLabel input {
 	margin-top: 0;
-	width: auto;
 }
 
 .formField {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
+}
+
+.formFieldInline {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.formFieldInline > label {
+	min-width: 100px;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--text);
+	margin-top: 0;
+}
+
+.formFieldInline input[type="number"],
+.formFieldInline input[type="text"] {
+	width: 100px;
+	flex-shrink: 0;
+	margin-top: 0;
+}
+
+.formFieldInline input[type="color"] {
+	flex-shrink: 0;
+	margin-top: 0;
+}
+
+.fieldDescFull {
+	flex-basis: 100%;
+	margin-top: 1px;
+}
+
+.inlineColor {
+	width: 36px;
+	height: 24px;
+	padding: 1px;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-xs);
+	background: none;
+	cursor: pointer;
+	margin-left: auto;
 }
 
 .formField label,
@@ -451,17 +509,12 @@ label {
 	color: var(--text);
 }
 
-.formField input[type="number"],
-.formField input[type="text"] {
-	width: 100%;
-}
-
 .formFieldCheck {
 	justify-content: flex-start;
 }
 
 .fieldDesc {
-	margin: 1px 0 2px;
+	margin: 0;
 	font-size: 11px;
 	color: var(--text-muted);
 	line-height: 1.45;

@@ -132,9 +132,9 @@ const I18N = {
 		mog2_threshold_desc: "Sensibilité de la détection du premier plan. Plus bas = plus sensible (faux positifs). Plus haut = moins sensible (peut rater le rat).",
 		detect_shadows: "Détecter les ombres",
 		detect_shadows_desc: "Active la détection d'ombres. Légèrement plus lent mais réduit les artefacts d'ombres confondus avec le rat.",
-		morph_open: "Noyau ouverture morph.",
+		morph_open: "Noyau d'ouverture morphologique.",
 		morph_open_desc: "Taille du noyau pour supprimer le bruit. Doit être impair. Des valeurs plus grandes suppriment un bruit plus important.",
-		morph_close: "Noyau fermeture morph.",
+		morph_close: "Noyau de fermeture morphologique.",
 		morph_close_desc: "Taille du noyau pour combler les trous dans le blob détecté. Doit être impair.",
 		min_area: "Surface contour min. (px²)",
 		min_area_desc: "Taille minimale du blob pour être considéré comme le rat. Augmentez si du bruit est détecté.",
@@ -177,7 +177,7 @@ const I18N = {
 		save: "Enregistrer",
 		cancel: "Annuler",
 		select_video: "Choisir une vidéo",
-		no_file: "Aucun video sélectionné",
+		no_file: "Aucun video sélectionnée",
 		start_time: "Début (s)",
 		end_time: "Fin (s)",
 		pool_radius: "Rayon (cm)",
@@ -201,11 +201,11 @@ const I18N = {
 		morph_open: "Morfoloji Açma Çekirdeği",
 		morph_open_desc: "Küçük gürültü bloblarını kaldırmak için kullanılan çekirdek boyutu. Tek sayı olmalı.",
 		morph_close: "Morfoloji Kapama Çekirdeği",
-		morph_close_desc: "Algılanan rat blobundaki boşlukları doldurmak için çekirdek boyutu. Tek sayı olmalı.",
+		morph_close_desc: "Algılanan fare blobundaki boşlukları doldurmak için çekirdek boyutu. Tek sayı olmalı.",
 		min_area: "Min Kontur Alanı (px²)",
-		min_area_desc: "Rat olarak kabul edilmek için minimum blob boyutu. Gürültü algılanıyorsa artırın.",
+		min_area_desc: "Fare olarak kabul edilmek için minimum blob boyutu. Gürültü algılanıyorsa artırın.",
 		max_area: "Maks Kontur Alanı (px²)",
-		max_area_desc: "Rat olarak kabul edilmek için maksimum blob boyutu. Yansımalar algılanıyorsa azaltın.",
+		max_area_desc: "Fare olarak kabul edilmek için maksimum blob boyutu. Yansımalar algılanıyorsa azaltın.",
 		trail_s: "İz Uzunluğu (s)",
 		trail_s_desc: "Çıktı videosunda hareket izi olarak çizilen süre (saniye). Yalnızca görsel.",
 		debug_frames: "Hata Ayıklama Kareleri",
@@ -225,21 +225,21 @@ const I18N = {
 		features: "Analiz Özellikleri",
 		features_note: "İsteğe bağlı analizleri etkinleştirin. Platforma bağlı özellikler kalibrasyon gerektirir.",
 		quadrantcross: "Çeyrek Geçişleri",
-		quadrantcross_desc: "Ratın her çeyrekten kaç kez çıktığını sayar.",
+		quadrantcross_desc: "Farenin her çeyrekten kaç kez çıktığını sayar.",
 		platformcross: "Platform Geçişleri",
-		platformcross_desc: "Ratın platformdan kaç kez çıktığını sayar. Platform kalibrasyonu gerektirir.",
+		platformcross_desc: "Farenin platformdan kaç kez çıktığını sayar. Platform kalibrasyonu gerektirir.",
 		paraplatform: "ParaPlatform Analizi",
-		paraplatform_desc: "Platform etrafında ölçeklendirilmiş bir bölgede geçirilen süre ve mesafeyi takip eder.",
+		paraplatform_desc: "Platform etrafında ölçeklendirilmiş bir bölgede farenin geçirdiği süre ve mesafeyi takip eder.",
 		paraplatform_scale: "Alan Ölçek Faktörü",
 		paraplatform_scale_desc: "ParaPlatform bölgesi için alan çarpanı. 4 = gerçek platformun 4× alanı.",
 		proximity: "Platform Yakınlığı",
-		proximity_desc: "Ratın platform merkezine olan ortalama mesafesini hesaplar.",
+		proximity_desc: "Farenin platform merkezine olan ortalama mesafesini hesaplar.",
 		latency: "Platform Gecikmesi",
-		latency_desc: "Ratın platforma ilk adım atana kadar geçen süre ve mesafeyi kaydeder.",
+		latency_desc: "Farenin platforma ilk adım atana kadar geçen süre ve mesafeyi kaydeder.",
 		tracemapcolor: "Tracemap Rengi",
 		tracemapcolor_desc: "Tracemap çıktı görüntüsündeki yol çizgisinin rengi.",
-		ratcolor: "Rat Marker Rengi",
-		ratcolor_desc: "Çıktı videosunda rat üzerine çizilen nokta ve işaretin rengi.",
+		ratcolor: "Fare İşaret Rengi",
+		ratcolor_desc: "Çıktı videosunda fare üzerine çizilen nokta ve işaretin rengi.",
 		save: "Kaydet",
 		cancel: "İptal",
 		select_video: "Video Seç",
@@ -308,8 +308,9 @@ function saveConfig(newCfg) {
 	} catch {}
 }
 
-function cfgToShareString(c) {
+function cfgToShareString(c, profileName = "") {
 	const parts = [];
+	if (profileName) parts.push(`--profilename "${profileName}"`);
 	parts.push(`--mog2_history_s ${c.mog2_history_s}`);
 	parts.push(`--mog2_threshold ${c.mog2_threshold}`);
 	if (c.mog2_detect_shadow) parts.push("--mog2_detect_shadow");
@@ -339,12 +340,26 @@ function cfgToShareString(c) {
 
 function shareStringToCfg(str) {
 	const result = { ...DEFAULTS };
+	let profileName = "";
 	const tokens = str.trim().split(/\s+/);
 	let i = 0;
 	while (i < tokens.length) {
 		const t = tokens[i],
 			next = tokens[i + 1];
 		switch (t) {
+			case "--profilename": {
+				const joined = tokens.slice(i + 1).join(" ");
+				const match = joined.match(/^"([^"]+)"/);
+				if (match) {
+					profileName = match[1];
+					const consumed = match[0].split(/\s+/).length;
+					i += 1 + consumed;
+				} else {
+					profileName = next || "";
+					i += 2;
+				}
+				break;
+			}
 			case "--mog2_history_s":
 				result.mog2_history_s = parseFloat(next);
 				i += 2;
@@ -448,7 +463,7 @@ function shareStringToCfg(str) {
 				i += 1;
 		}
 	}
-	return result;
+	return { result, profileName };
 }
 
 function hexColorToRgbString(hex) {
@@ -520,17 +535,24 @@ function deleteProfile() {
 }
 
 function shareProfile() {
-	const str = cfgToShareString(cfg);
+	const str = cfgToShareString(cfg, activeProfileName);
 	navigator.clipboard.writeText(str).catch(() => {});
 	showMiniModal("share", str);
 }
 
 function importProfile(str) {
-	const imported = shareStringToCfg(str.trim());
-	cfg = { ...cfg, ...imported };
-	profiles[activeProfileName] = { ...cfg };
+	const { result: imported, profileName: rawName } = shareStringToCfg(str.trim());
+	let name = rawName || "Imported Profile";
+	let finalName = name;
+	let counter = 2;
+	while (profiles[finalName]) finalName = `${name} (${counter++})`;
+	profiles[finalName] = { ...cfg, ...imported };
 	saveProfiles(profiles);
+	activeProfileName = finalName;
+	saveActiveProfileName(finalName);
+	cfg = loadConfig();
 	populateForm(cfg);
+	renderProfileBar();
 }
 
 function showMiniModal(type, prefill = "") {

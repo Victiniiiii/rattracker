@@ -52,6 +52,9 @@ const DEFAULTS = {
 	tracemapcolor: "#00ffff",
 	ratcolor_enabled: false,
 	ratcolor: "#ff0000",
+	mog2_learning_rate: -1.0,
+	max_interp_gap: 0,
+	heatmap_sigma: 0,
 	language: "en",
 };
 
@@ -108,6 +111,12 @@ const I18N = {
 		tracemapcolor_desc: "Color of the path line drawn on the tracemap image output.",
 		ratcolor: "Rat Marker Color",
 		ratcolor_desc: "Color of the dot and bounding marker drawn on the rat in the output video.",
+		mog2_learning_rate: "MOG2 Learning Rate",
+		mog2_learning_rate_desc: "Background adaptation speed. -1 = automatic. Lower values (e.g. 0.001) prevent a slow or stationary rat from being absorbed into the background model, fixing the fast→slow→disappear tracking failure.",
+		max_interp_gap: "Max Interpolation Gap (frames)",
+		max_interp_gap_desc: "Maximum number of consecutive missing frames to fill by interpolation. 0 = unlimited (old behaviour). Set e.g. 10 to avoid drawing straight lines across the pool during long dropouts.",
+		heatmap_sigma: "Heatmap Blur Sigma",
+		heatmap_sigma_desc: "Gaussian blur radius for the heatmap output. 0 = auto-calculated from video resolution (recommended). Increase for softer blobs, decrease for sharper.",
 		save: "Save",
 		cancel: "Cancel",
 		select_video: "Select Video",
@@ -174,6 +183,12 @@ const I18N = {
 		tracemapcolor_desc: "Couleur du tracé sur l'image tracemap.",
 		ratcolor: "Couleur du marqueur rat",
 		ratcolor_desc: "Couleur du point et du marqueur dessinés sur le rat dans la vidéo de sortie.",
+		mog2_learning_rate: "Taux d'apprentissage MOG2",
+		mog2_learning_rate_desc: "Vitesse d'adaptation du fond. -1 = automatique. Des valeurs basses (ex. 0.001) empêchent un rat immobile d'être absorbé dans le fond.",
+		max_interp_gap: "Écart d'interpolation max (images)",
+		max_interp_gap_desc: "Nombre max d'images manquantes consécutives à interpoler. 0 = illimité. Ex. 10 pour éviter les lignes droites pendant les longues pertes de détection.",
+		heatmap_sigma: "Sigma de flou de la carte de chaleur",
+		heatmap_sigma_desc: "Rayon du flou gaussien pour la carte de chaleur. 0 = calculé automatiquement selon la résolution (recommandé).",
 		save: "Enregistrer",
 		cancel: "Annuler",
 		select_video: "Choisir une vidéo",
@@ -240,6 +255,12 @@ const I18N = {
 		tracemapcolor_desc: "Tracemap çıktı görüntüsündeki yol çizgisinin rengi.",
 		ratcolor: "Fare İşaret Rengi",
 		ratcolor_desc: "Çıktı videosunda fare üzerine çizilen nokta ve işaretin rengi.",
+		mog2_learning_rate: "MOG2 Öğrenme Hızı",
+		mog2_learning_rate_desc: "Arka plan uyum hızı. -1 = otomatik. Düşük değerler (ör. 0.001) yavaş veya hareketsiz farenin arka plana karışmasını önler.",
+		max_interp_gap: "Maks. Enterpolasyon Boşluğu (kare)",
+		max_interp_gap_desc: "Enterpolasyonla doldurulacak maksimum ardışık kayıp kare sayısı. 0 = sınırsız. Uzun kayıp dönemlerinde havuz üzerinde düz çizgi çizilmesini önlemek için örn. 10 girin.",
+		heatmap_sigma: "Isı Haritası Bulanıklık Sigma",
+		heatmap_sigma_desc: "Isı haritası için Gauss bulanıklığı yarıçapı. 0 = çözünürlüğe göre otomatik hesaplanır (önerilen).",
 		save: "Kaydet",
 		cancel: "İptal",
 		select_video: "Video Seç",
@@ -335,6 +356,9 @@ function cfgToShareString(c, profileName = "") {
 	if (c.latency) parts.push("--latency");
 	if (c.tracemapcolor_enabled && c.tracemapcolor) parts.push(`--tracemapcolor ${hexColorToRgbString(c.tracemapcolor)}`);
 	if (c.ratcolor_enabled && c.ratcolor) parts.push(`--ratcolor ${hexColorToRgbString(c.ratcolor)}`);
+	if (c.mog2_learning_rate != null && c.mog2_learning_rate !== -1.0) parts.push(`--mog2_learning_rate ${c.mog2_learning_rate}`);
+	if (c.max_interp_gap != null && c.max_interp_gap !== 0) parts.push(`--max_interp_gap ${c.max_interp_gap}`);
+	if (c.heatmap_sigma != null && c.heatmap_sigma !== 0) parts.push(`--heatmap_sigma ${c.heatmap_sigma}`);
 	return parts.join(" ");
 }
 
@@ -457,6 +481,18 @@ function shareStringToCfg(str) {
 			case "--ratcolor":
 				result.ratcolor_enabled = true;
 				result.ratcolor = rgbStringToHex(next);
+				i += 2;
+				break;
+			case "--mog2_learning_rate":
+				result.mog2_learning_rate = parseFloat(next);
+				i += 2;
+				break;
+			case "--max_interp_gap":
+				result.max_interp_gap = parseInt(next);
+				i += 2;
+				break;
+			case "--heatmap_sigma":
+				result.heatmap_sigma = parseFloat(next);
 				i += 2;
 				break;
 			default:
@@ -712,6 +748,9 @@ function buildArgs(filePath, currentCfg) {
 	if (currentCfg.latency) args.push("--latency");
 	if (currentCfg.tracemapcolor_enabled && currentCfg.tracemapcolor) args.push("--tracemapcolor", hexColorToRgbString(currentCfg.tracemapcolor));
 	if (currentCfg.ratcolor_enabled && currentCfg.ratcolor) args.push("--ratcolor", hexColorToRgbString(currentCfg.ratcolor));
+	if (currentCfg.mog2_learning_rate != null && currentCfg.mog2_learning_rate !== -1.0) args.push("--mog2_learning_rate", String(currentCfg.mog2_learning_rate));
+	if (currentCfg.max_interp_gap != null && currentCfg.max_interp_gap !== 0) args.push("--max_interp_gap", String(currentCfg.max_interp_gap));
+	if (currentCfg.heatmap_sigma != null && currentCfg.heatmap_sigma !== 0) args.push("--heatmap_sigma", String(currentCfg.heatmap_sigma));
 	args.push("--appmode");
 	return args;
 }
@@ -803,6 +842,9 @@ async function runScript() {
 
 	setUIRunning(true);
 
+	let stderrLines = [];
+	let completedNormally = false;
+
 	const args = buildArgs(selectedFile, cfg);
 	pythonProcess = Command.sidecar("bin/main", args);
 	pythonProcess.stdout.on("data", async line => {
@@ -822,6 +864,7 @@ async function runScript() {
 		}
 
 		if (parsed.done) {
+			completedNormally = true;
 			if (parsed.pool_west) cfg.pool_west = formatPoint(parsed.pool_west);
 			if (parsed.pool_north) cfg.pool_north = formatPoint(parsed.pool_north);
 			if (parsed.pool_east) cfg.pool_east = formatPoint(parsed.pool_east);
@@ -873,24 +916,44 @@ async function runScript() {
 
 	pythonProcess.stderr.on("data", line => {
 		console.error("stderr:", line);
+		stderrLines.push(line);
 	});
+
 	pythonProcess.on("close", code => {
 		console.log("Process exited:", code);
+		const wasCancelled = pythonProcess === null;
 		pythonProcess = null;
 		setUIRunning(false);
+
+		if (!completedNormally && !wasCancelled && code !== 0) {
+			showErrorModal(code, stderrLines);
+		}
 	});
 	await pythonProcess.spawn();
 }
 
 function cancelScript() {
 	if (pythonProcess) {
-		pythonProcess.kill();
+		const proc = pythonProcess;
 		pythonProcess = null;
+		proc.kill();
 	}
 	setUIRunning(false);
 	document.getElementById("progressBar").value = 0;
 	document.getElementById("progressText").textContent = "";
 	document.getElementById("etaText").textContent = "";
+}
+
+function showErrorModal(exitCode, stderrLines) {
+	document.getElementById("errorModalCode").textContent = `Process exited with code ${exitCode}`;
+	const pre = document.getElementById("errorModalStderr");
+	pre.textContent = stderrLines.length ? stderrLines.join("\n") : "(no stderr output)";
+	document.getElementById("errorModalStderrWrap").open = stderrLines.length > 0;
+	document.getElementById("errorModal").hidden = false;
+}
+
+function closeErrorModal() {
+	document.getElementById("errorModal").hidden = true;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -929,3 +992,4 @@ window.selectFile = selectFile;
 window.switchTab = switchTab;
 window.runScript = runScript;
 window.cancelScript = cancelScript;
+window.closeErrorModal = closeErrorModal;

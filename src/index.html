@@ -167,6 +167,21 @@
 							<input type="number" id="debug_frames" name="debug_frames" min="0" value="0" />
 							<p class="fieldDesc fieldDescFull" data-i18n-desc="debug_frames_desc"></p>
 						</div>
+						<div class="formField formFieldInline">
+							<label for="mog2_learning_rate" data-i18n="mog2_learning_rate">MOG2 Learning Rate</label>
+							<input type="number" id="mog2_learning_rate" name="mog2_learning_rate" min="-1" max="1" step="0.001" value="-1" />
+							<p class="fieldDesc fieldDescFull" data-i18n-desc="mog2_learning_rate_desc"></p>
+						</div>
+						<div class="formField formFieldInline">
+							<label for="max_interp_gap" data-i18n="max_interp_gap">Max Interpolation Gap (frames)</label>
+							<input type="number" id="max_interp_gap" name="max_interp_gap" min="0" step="1" value="0" />
+							<p class="fieldDesc fieldDescFull" data-i18n-desc="max_interp_gap_desc"></p>
+						</div>
+						<div class="formField formFieldInline">
+							<label for="heatmap_sigma" data-i18n="heatmap_sigma">Heatmap Blur Sigma</label>
+							<input type="number" id="heatmap_sigma" name="heatmap_sigma" min="0" step="1" value="0" />
+							<p class="fieldDesc fieldDescFull" data-i18n-desc="heatmap_sigma_desc"></p>
+						</div>
 					</div>
 					<div class="formCol" style="margin-top: 8px">
 						<div class="formField">
@@ -262,6 +277,24 @@
 				</div>
 				<div id="tabHeatmap" class="tabContent" hidden>
 					<div id="heatmap"></div>
+				</div>
+			</div>
+		</div>
+
+		<div id="errorModal" hidden>
+			<div id="errorModalBackdrop" onclick="closeErrorModal()"></div>
+			<div id="errorModalBox">
+				<div id="errorModalHeader">
+					<span id="errorModalTitle">&#9888; Analysis Failed</span>
+					<button class="iconBtn" onclick="closeErrorModal()">✕</button>
+				</div>
+				<p id="errorModalCode"></p>
+				<details id="errorModalStderrWrap">
+					<summary>Error details</summary>
+					<pre id="errorModalStderr"></pre>
+				</details>
+				<div id="errorModalFooter">
+					<button class="primaryBtn" onclick="closeErrorModal()">Dismiss</button>
 				</div>
 			</div>
 		</div>

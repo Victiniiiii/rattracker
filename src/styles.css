@@ -740,3 +740,110 @@ progress {
 	cursor: not-allowed;
 	pointer-events: none;
 }
+
+#errorModal {
+	position: fixed;
+	inset: 0;
+	z-index: 300;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+#errorModal[hidden] {
+	display: none;
+}
+
+#errorModalBackdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.6);
+}
+
+#errorModalBox {
+	position: relative;
+	background: var(--surface);
+	border: 1px solid var(--danger);
+	border-radius: var(--radius);
+	width: 520px;
+	max-width: calc(100vw - 32px);
+	max-height: 70vh;
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+	overflow: hidden;
+}
+
+#errorModalHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 16px;
+	border-bottom: 1px solid var(--border);
+	flex-shrink: 0;
+}
+
+#errorModalTitle {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--danger);
+}
+
+#errorModalCode {
+	padding: 10px 16px;
+	font-size: 12px;
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+#errorModalStderrWrap {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	padding: 0 16px;
+}
+
+#errorModalStderrWrap summary {
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--text-muted);
+	cursor: pointer;
+	padding: 4px 0 8px;
+	user-select: none;
+	flex-shrink: 0;
+}
+
+#errorModalStderrWrap summary:hover {
+	color: var(--text);
+}
+
+#errorModalStderrWrap[open] {
+	padding-bottom: 12px;
+}
+
+#errorModalStderr {
+	flex: 1;
+	min-height: 80px;
+	max-height: 340px;
+	overflow-y: auto;
+	background: var(--bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	padding: 10px 12px;
+	font-size: 11px;
+	font-family: monospace;
+	color: #f08080;
+	white-space: pre-wrap;
+	word-break: break-word;
+	line-height: 1.5;
+}
+
+#errorModalFooter {
+	padding: 12px 16px;
+	display: flex;
+	justify-content: flex-end;
+	border-top: 1px solid var(--border);
+	flex-shrink: 0;
+}

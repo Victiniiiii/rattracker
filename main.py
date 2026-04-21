@@ -1012,7 +1012,7 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm, lang, quad_exits=N
 def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, prev_pos=None):
     if len(frame.shape) == 3:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    fg_mask = subtractor.apply(frame)
+    fg_mask = subtractor.apply(frame, learningRate=cfg.get("mog2_learning_rate", -1.0))
     if pool_mask is not None:
         fg_mask = cv2.bitwise_and(fg_mask, fg_mask, mask=pool_mask)
     k_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (cfg["morph_open_k"],  cfg["morph_open_k"]))
@@ -1044,7 +1044,7 @@ def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, p
     bx, by, _, winning_cnt = candidates[0]
     return (bx, by), winning_cnt
 
-def interpolate_missing(records: list) -> list:
+def interpolate_missing(records: list, max_gap: int = 0) -> list:
     n      = len(records)
     result = list(records)
     i = 0
@@ -1057,14 +1057,15 @@ def interpolate_missing(records: list) -> list:
             while right < n and result[right]["x"] is None:
                 right += 1
             if left >= 0 and right < n:
-                x0, y0 = result[left]["x"],  result[left]["y"]
-                x1, y1 = result[right]["x"], result[right]["y"]
                 gap = right - left
-                for j in range(left + 1, right):
-                    t = (j - left) / gap
-                    result[j]["x"]            = round(x0 + t * (x1 - x0), 2)
-                    result[j]["y"]            = round(y0 + t * (y1 - y0), 2)
-                    result[j]["interpolated"] = True
+                if max_gap == 0 or gap - 1 <= max_gap:
+                    x0, y0 = result[left]["x"],  result[left]["y"]
+                    x1, y1 = result[right]["x"], result[right]["y"]
+                    for j in range(left + 1, right):
+                        t = (j - left) / gap
+                        result[j]["x"]            = round(x0 + t * (x1 - x0), 2)
+                        result[j]["y"]            = round(y0 + t * (y1 - y0), 2)
+                        result[j]["interpolated"] = True
             i = right
         else:
             i += 1
@@ -1093,6 +1094,12 @@ def build_rerun_command(video_path, args, cfg):
         parts.append(f"--mog2_threshold {args.mog2_threshold}")
     if args.mog2_detect_shadow:
         parts.append("--mog2_detect_shadow")
+    if args.mog2_learning_rate != -1.0:
+        parts.append(f"--mog2_learning_rate {args.mog2_learning_rate}")
+    if args.max_interp_gap != 0:
+        parts.append(f"--max_interp_gap {args.max_interp_gap}")
+    if args.heatmap_sigma != 0:
+        parts.append(f"--heatmap_sigma {args.heatmap_sigma}")
     if args.morph_open_k != 3:
         parts.append(f"--morph_open_k {args.morph_open_k}")
     if args.morph_close_k != 15:
@@ -1143,11 +1150,14 @@ def main():
     parser.add_argument("--mog2_history_s",      default=4.0,    type=float)
     parser.add_argument("--mog2_threshold",      default=32,     type=float)
     parser.add_argument("--mog2_detect_shadow",  default=False,  action="store_true")
+    parser.add_argument("--mog2_learning_rate",  default=-1.0,   type=float)
     parser.add_argument("--morph_open_k",        default=3,      type=int)
     parser.add_argument("--morph_close_k",       default=15,     type=int)
     parser.add_argument("--min_contour_area",    default=300,    type=float)
     parser.add_argument("--max_contour_area",    default=12000,  type=float)
     parser.add_argument("--trail_s",             default=2.0,    type=float)
+    parser.add_argument("--max_interp_gap",      default=0,      type=int)
+    parser.add_argument("--heatmap_sigma",       default=0,      type=float)
     parser.add_argument("--debug_frames",        default=0,      type=int)
     parser.add_argument("--pool_west",           default=None,   type=str)
     parser.add_argument("--pool_north",          default=None,   type=str)
@@ -1177,6 +1187,7 @@ def main():
         "mog2_history":       0,
         "mog2_threshold":     args.mog2_threshold,
         "mog2_detect_shadow": args.mog2_detect_shadow,
+        "mog2_learning_rate": args.mog2_learning_rate,
         "morph_open_k":       args.morph_open_k,
         "morph_close_k":      args.morph_close_k,
         "min_contour_area":   args.min_contour_area,
@@ -1345,7 +1356,7 @@ def main():
             break
         if len(wf.shape) == 3:
             wf = cv2.cvtColor(wf, cv2.COLOR_BGR2GRAY)
-        subtractor.apply(wf)
+        subtractor.apply(wf, learningRate=cfg["mog2_learning_rate"])
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
     records              = []
@@ -1553,7 +1564,7 @@ def main():
     writer.release()
 
     detected      = sum(1 for r in records if r["x"] is not None)
-    records       = interpolate_missing(records)
+    records       = interpolate_missing(records, max_gap=args.max_interp_gap)
     missing_after = sum(1 for r in records if r["x"] is None)
 
     total_dist_px = 0.0
@@ -1727,8 +1738,9 @@ def main():
     with open(summary_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
+    heatmap_sigma = args.heatmap_sigma if args.heatmap_sigma > 0 else max(5, int(round(min(frame_w, frame_h) / 40)))
     tracemap(records, first_frame, output_dir, video_path, ts, color=tracemap_color)
-    heatmap(records, first_frame, output_dir, video_path, ts)
+    heatmap(records, first_frame, output_dir, video_path, ts, sigma=heatmap_sigma)
 
     if not cfg["app_mode"]:
         print("\n" + "\n".join(lines))

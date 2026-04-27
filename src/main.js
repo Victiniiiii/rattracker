@@ -833,6 +833,405 @@ function switchTab(tab) {
 	document.getElementById("tab" + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)).hidden = false;
 }
 
+// ── Calibration canvas ────────────────────────────────────────────────────────
+
+const CALIB_POOL_STEPS = ["WEST", "NORTH", "EAST", "SOUTH"];
+const CALIB_PLAT_STEPS = ["NW", "NE", "SE", "SW"];
+
+const CALIB_POOL_COLORS = { WEST: "#ff8c00", NORTH: "#32cd32", EAST: "#1e90ff", SOUTH: "#ee3a8c" };
+const CALIB_PLAT_COLORS = { NW: "#ff64c8", NE: "#64c8ff", SE: "#c8ff64", SW: "#ffc864" };
+
+const CALIB_POOL_LABELS = {
+	en: { WEST: "WEST", NORTH: "NORTH", EAST: "EAST", SOUTH: "SOUTH" },
+	fr: { WEST: "OUEST", NORTH: "NORD", EAST: "EST", SOUTH: "SUD" },
+	tr: { WEST: "BATI", NORTH: "KUZEY", EAST: "DOGU", SOUTH: "GUNEY" },
+};
+
+// Active calibration session state
+let calibSession = null;
+
+function poolEllipseFromNSEW(west, north, east, south) {
+	const cx = (west[0] + east[0] + north[0] + south[0]) / 4;
+	const cy = (west[1] + east[1] + north[1] + south[1]) / 4;
+	const r1x = east[0] - cx,
+		r1y = east[1] - cy;
+	const r2x = north[0] - cx,
+		r2y = north[1] - cy;
+	// 2x2 covariance
+	const m00 = r1x * r1x + r2x * r2x;
+	const m01 = r1x * r1y + r2x * r2y;
+	const m11 = r1y * r1y + r2y * r2y;
+	// eigenvalues
+	const trace = m00 + m11;
+	const det = m00 * m11 - m01 * m01;
+	const disc = Math.sqrt(Math.max(0, (trace * trace) / 4 - det));
+	const lam1 = trace / 2 + disc; // larger
+	const lam2 = trace / 2 - disc;
+	const rx = Math.round(Math.sqrt(lam1));
+	const ry = Math.round(Math.sqrt(Math.max(0, lam2)));
+	// angle: eigenvector of lam1
+	const angle = Math.atan2(lam1 - m00, m01); // radians
+	return { cx: Math.round(cx), cy: Math.round(cy), rx, ry, angle };
+}
+
+function drawCalibCanvas() {
+	if (!calibSession) return;
+	const { canvas, ctx, img, poolPts, platPts, phase, step, scaleX, scaleY, origW, origH } = calibSession;
+
+	// Draw background frame
+	ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+	// ── pool points ─────────────────────────────────────────────────────────
+	const poolKeys = Object.keys(poolPts);
+	poolKeys.forEach(k => {
+		const [px, py] = poolPts[k];
+		const label = (CALIB_POOL_LABELS[cfg.language] || CALIB_POOL_LABELS.en)[k];
+		const color = CALIB_POOL_COLORS[k];
+		drawDot(ctx, px, py, color, label);
+	});
+
+	if (poolKeys.length === 4) {
+		const w = poolPts["WEST"],
+			n = poolPts["NORTH"],
+			e = poolPts["EAST"],
+			s = poolPts["SOUTH"];
+		const el = poolEllipseFromNSEW(w, n, e, s);
+		// cross hairs
+		ctx.save();
+		ctx.strokeStyle = "#64ffb4";
+		ctx.lineWidth = 1;
+		ctx.setLineDash([4, 4]);
+		ctx.beginPath();
+		ctx.moveTo(n[0], n[1]);
+		ctx.lineTo(s[0], s[1]);
+		ctx.stroke();
+		ctx.beginPath();
+		ctx.moveTo(w[0], w[1]);
+		ctx.lineTo(e[0], e[1]);
+		ctx.stroke();
+		ctx.setLineDash([]);
+		// ellipse
+		ctx.beginPath();
+		ctx.ellipse(el.cx, el.cy, el.rx, el.ry, el.angle, 0, Math.PI * 2);
+		ctx.strokeStyle = "#64ffb4";
+		ctx.lineWidth = 2;
+		ctx.stroke();
+		// center dot
+		ctx.beginPath();
+		ctx.arc(el.cx, el.cy, 4, 0, Math.PI * 2);
+		ctx.fillStyle = "#64ffb4";
+		ctx.fill();
+		ctx.restore();
+	}
+
+	// ── platform points ──────────────────────────────────────────────────────
+	const platKeys = CALIB_PLAT_STEPS.filter(k => platPts[k]);
+	platKeys.forEach(k => {
+		drawDot(ctx, platPts[k][0], platPts[k][1], CALIB_PLAT_COLORS[k], k);
+	});
+
+	if (platKeys.length >= 2) {
+		ctx.save();
+		ctx.strokeStyle = "#c8c832";
+		ctx.lineWidth = 1.5;
+		ctx.beginPath();
+		for (let i = 0; i < platKeys.length; i++) {
+			const pt = platPts[platKeys[i]];
+			if (i === 0) ctx.moveTo(pt[0], pt[1]);
+			else ctx.lineTo(pt[0], pt[1]);
+		}
+		if (platKeys.length === 4) ctx.closePath();
+		ctx.stroke();
+		ctx.restore();
+	}
+
+	// ── instruction overlay (top banner) ────────────────────────────────────
+	updateCalibInstruction();
+}
+
+function drawDot(ctx, x, y, color, label) {
+	ctx.save();
+	ctx.beginPath();
+	ctx.arc(x, y, 7, 0, Math.PI * 2);
+	ctx.fillStyle = color;
+	ctx.fill();
+	ctx.beginPath();
+	ctx.arc(x, y, 9, 0, Math.PI * 2);
+	ctx.strokeStyle = "#fff";
+	ctx.lineWidth = 1.5;
+	ctx.stroke();
+	ctx.font = "bold 12px system-ui, sans-serif";
+	ctx.fillStyle = color;
+	ctx.fillText(label, x + 12, y + 5);
+	ctx.restore();
+}
+
+function updateCalibInstruction() {
+	if (!calibSession) return;
+	const { phase, step, requirePlatform, poolPts, platPts, isConfirm, confirmType } = calibSession;
+	const instrEl = document.getElementById("calibInstruction");
+	const titleEl = document.getElementById("calibTitle");
+	const confirmBtn = document.getElementById("calibConfirmBtn");
+
+	const poolLabels = CALIB_POOL_LABELS[cfg.language] || CALIB_POOL_LABELS.en;
+
+	if (isConfirm) {
+		titleEl.textContent = confirmType === "pool" ? "Saved pool coordinates found" : "Saved platform coordinates found";
+		instrEl.innerHTML = "Use these coordinates, or click <b>Redo</b> to pick new ones.";
+		confirmBtn.disabled = false;
+		return;
+	}
+
+	if (phase === "pool") {
+		if (step < CALIB_POOL_STEPS.length) {
+			const key = CALIB_POOL_STEPS[step];
+			const label = poolLabels[key];
+			titleEl.textContent = `Pool calibration — step ${step + 1} / 4`;
+			instrEl.innerHTML = `Click on the <b style="color:${CALIB_POOL_COLORS[key]}">${label}</b> point of the pool edge.`;
+			confirmBtn.disabled = true;
+		} else {
+			// All pool points placed; phase will auto-switch to "platform" if required
+			titleEl.textContent = "Pool calibration — all 4 points set";
+			instrEl.innerHTML = requirePlatform ? "Pool set! Now click the <b>Confirm</b> button after picking all platform corners below." : "All 4 pool points set. Click <b>Confirm</b> to continue or <b>Redo</b> to start over.";
+			confirmBtn.disabled = requirePlatform;
+		}
+	} else {
+		// phase === "platform"
+		const currentPlatStep = calibSession.platStep;
+		if (currentPlatStep < CALIB_PLAT_STEPS.length) {
+			const key = CALIB_PLAT_STEPS[currentPlatStep];
+			titleEl.textContent = `Platform calibration — step ${currentPlatStep + 1} / 4`;
+			instrEl.innerHTML = `Click the <b style="color:${CALIB_PLAT_COLORS[key]}">${key}</b> platform corner (clockwise).`;
+			confirmBtn.disabled = true;
+		} else {
+			titleEl.textContent = "Platform calibration — all 4 corners set";
+			instrEl.innerHTML = "All 4 platform corners set. Click <b>Confirm</b> to continue or <b>Redo</b> to start over.";
+			confirmBtn.disabled = false;
+		}
+	}
+}
+
+function openCalibOverlay(msg) {
+	// msg: { needs_calib, frame_b64, frame_w, frame_h, require_platform }
+	//   or { needs_confirm, confirm_type, frame_b64, frame_w, frame_h, points }
+	const overlay = document.getElementById("calibOverlay");
+	const canvas = document.getElementById("calibCanvas");
+	const ctx = canvas.getContext("2d");
+
+	// Figure out display size — fit within 90vw × 80vh
+	const maxW = Math.floor(window.innerWidth * 0.9);
+	const maxH = Math.floor(window.innerHeight * 0.8);
+	const origW = msg.frame_w,
+		origH = msg.frame_h;
+	const scale = Math.min(maxW / origW, maxH / origH, 1);
+	const dispW = Math.round(origW * scale);
+	const dispH = Math.round(origH * scale);
+	canvas.width = dispW;
+	canvas.height = dispH;
+
+	const scaleX = dispW / origW; // display px per original px
+	const scaleY = dispH / origH;
+
+	const isConfirm = !!msg.needs_confirm;
+	const confirmType = msg.confirm_type || null;
+	const requirePlatform = msg.require_platform || false;
+	const existingPool = msg.existing_pool || null; // pool already confirmed, only pick platform
+
+	// Pre-fill points if this is a confirm dialog (convert orig→display coords)
+	let poolPts = {},
+		platPts = {},
+		phase = "pool",
+		platStep = 0;
+	let poolStep = 0;
+
+	if (isConfirm && confirmType === "pool") {
+		const p = msg.points;
+		poolPts = {
+			WEST: [p.pool_west[0] * scaleX, p.pool_west[1] * scaleY],
+			NORTH: [p.pool_north[0] * scaleX, p.pool_north[1] * scaleY],
+			EAST: [p.pool_east[0] * scaleX, p.pool_east[1] * scaleY],
+			SOUTH: [p.pool_south[0] * scaleX, p.pool_south[1] * scaleY],
+		};
+		poolStep = 4;
+	} else if (isConfirm && confirmType === "platform") {
+		const p = msg.points;
+		platPts = {
+			NW: [p.platform_nw[0] * scaleX, p.platform_nw[1] * scaleY],
+			NE: [p.platform_ne[0] * scaleX, p.platform_ne[1] * scaleY],
+			SE: [p.platform_se[0] * scaleX, p.platform_se[1] * scaleY],
+			SW: [p.platform_sw[0] * scaleX, p.platform_sw[1] * scaleY],
+		};
+		platStep = 4;
+	} else if (existingPool) {
+		// Pool was already confirmed; pre-fill it and jump to platform phase
+		const p = existingPool;
+		poolPts = {
+			WEST: [p.pool_west[0] * scaleX, p.pool_west[1] * scaleY],
+			NORTH: [p.pool_north[0] * scaleX, p.pool_north[1] * scaleY],
+			EAST: [p.pool_east[0] * scaleX, p.pool_east[1] * scaleY],
+			SOUTH: [p.pool_south[0] * scaleX, p.pool_south[1] * scaleY],
+		};
+		poolStep = 4;
+		phase = "platform";
+	}
+
+	calibSession = {
+		canvas,
+		ctx,
+		scaleX,
+		scaleY,
+		origW,
+		origH,
+		poolPts,
+		platPts,
+		phase, // "pool" | "platform"
+		step: poolStep, // pool step (0-4)
+		platStep, // platform step (0-4)
+		requirePlatform,
+		isConfirm,
+		confirmType,
+		img: null,
+	};
+
+	// Load frame image
+	const image = new Image();
+	image.onload = () => {
+		calibSession.img = image;
+		drawCalibCanvas();
+		overlay.hidden = false;
+	};
+	image.src = "data:image/jpeg;base64," + msg.frame_b64;
+
+	// Wire buttons
+	document.getElementById("calibRedoBtn").onclick = onCalibRedo;
+	document.getElementById("calibConfirmBtn").onclick = onCalibConfirm;
+	document.getElementById("calibCancelBtn").onclick = onCalibCancel;
+	canvas.onclick = onCalibClick;
+}
+
+function closeCalibOverlay() {
+	document.getElementById("calibOverlay").hidden = true;
+	document.getElementById("calibCanvas").onclick = null;
+	calibSession = null;
+}
+
+function onCalibClick(e) {
+	if (!calibSession) return;
+	const { canvas, scaleX, scaleY, isConfirm, requirePlatform } = calibSession;
+	if (isConfirm) return; // clicks do nothing in confirm mode
+
+	const rect = canvas.getBoundingClientRect();
+	const dispX = e.clientX - rect.left;
+	const dispY = e.clientY - rect.top;
+	// store in display coords; we convert back to original at submission time
+	const pt = [dispX, dispY];
+
+	if (calibSession.phase === "pool") {
+		if (calibSession.step >= CALIB_POOL_STEPS.length) return;
+		const key = CALIB_POOL_STEPS[calibSession.step];
+		calibSession.poolPts[key] = pt;
+		calibSession.step++;
+
+		// Auto-advance phase when all 4 pool points are set and platform is required
+		if (calibSession.step === CALIB_POOL_STEPS.length && requirePlatform) {
+			calibSession.phase = "platform";
+		}
+	} else {
+		if (calibSession.platStep >= CALIB_PLAT_STEPS.length) return;
+		const key = CALIB_PLAT_STEPS[calibSession.platStep];
+		calibSession.platPts[key] = pt;
+		calibSession.platStep++;
+	}
+
+	drawCalibCanvas();
+}
+
+function onCalibRedo() {
+	if (!calibSession) return;
+	if (calibSession.isConfirm) {
+		// Turn this into a fresh pick session
+		calibSession.isConfirm = false;
+		calibSession.confirmType = null;
+		calibSession.poolPts = {};
+		calibSession.platPts = {};
+		calibSession.phase = "pool";
+		calibSession.step = 0;
+		calibSession.platStep = 0;
+		drawCalibCanvas();
+		return;
+	}
+	calibSession.poolPts = {};
+	calibSession.platPts = {};
+	calibSession.phase = "pool";
+	calibSession.step = 0;
+	calibSession.platStep = 0;
+	drawCalibCanvas();
+}
+
+function onCalibConfirm() {
+	if (!calibSession) return;
+	const { scaleX, scaleY, isConfirm, confirmType, requirePlatform, poolPts, platPts, platStep, step } = calibSession;
+
+	// Validate we have enough points
+	const poolReady = Object.keys(poolPts).length === 4;
+	const platReady = !requirePlatform || platStep === 4;
+
+	if (isConfirm) {
+		// Send confirmed:true — Python keeps its cached coords
+		sendCalibResult({ confirmed: true });
+		closeCalibOverlay();
+		return;
+	}
+
+	if (!poolReady) return;
+	if (requirePlatform && !platReady) return;
+
+	// Convert display coords → original video pixel coords
+	function toOrig(pt) {
+		return [Math.round(pt[0] / scaleX), Math.round(pt[1] / scaleY)];
+	}
+
+	const result = {
+		pool_west: toOrig(poolPts["WEST"]).join(","),
+		pool_north: toOrig(poolPts["NORTH"]).join(","),
+		pool_east: toOrig(poolPts["EAST"]).join(","),
+		pool_south: toOrig(poolPts["SOUTH"]).join(","),
+	};
+
+	if (requirePlatform) {
+		result.platform_nw = toOrig(platPts["NW"]).join(",");
+		result.platform_ne = toOrig(platPts["NE"]).join(",");
+		result.platform_se = toOrig(platPts["SE"]).join(",");
+		result.platform_sw = toOrig(platPts["SW"]).join(",");
+	}
+
+	sendCalibResult(result);
+	closeCalibOverlay();
+}
+
+function onCalibCancel() {
+	sendCalibResult({ aborted: true });
+	closeCalibOverlay();
+	// Kill the process — user aborted calibration
+	if (pythonProcess) {
+		const proc = pythonProcess;
+		pythonProcess = null;
+		proc.kill();
+	}
+	setUIRunning(false);
+	document.getElementById("progressBar").value = 0;
+	document.getElementById("progressText").textContent = "";
+	document.getElementById("etaText").textContent = "";
+}
+
+function sendCalibResult(data) {
+	if (pythonProcess) {
+		pythonProcess.write(JSON.stringify(data) + "\n");
+	}
+}
+
+// ── Run / Cancel ──────────────────────────────────────────────────────────────
+
 async function runScript() {
 	if (!selectedFile) return;
 
@@ -847,12 +1246,19 @@ async function runScript() {
 
 	const args = buildArgs(selectedFile, cfg);
 	pythonProcess = Command.sidecar("bin/main", args);
+
 	pythonProcess.stdout.on("data", async line => {
 		let parsed;
-
 		try {
 			parsed = JSON.parse(line);
 		} catch {
+			return;
+		}
+
+		// ── Calibration requests from Python ─────────────────────────────────
+		if (parsed.needs_calib || parsed.needs_confirm) {
+			document.getElementById("progressText").textContent = "Calibrating...";
+			openCalibOverlay(parsed);
 			return;
 		}
 
@@ -923,12 +1329,14 @@ async function runScript() {
 		console.log("Process exited:", code);
 		const wasCancelled = pythonProcess === null;
 		pythonProcess = null;
+		closeCalibOverlay();
 		setUIRunning(false);
 
 		if (!completedNormally && !wasCancelled && code !== 0) {
 			showErrorModal(code, stderrLines);
 		}
 	});
+
 	await pythonProcess.spawn();
 }
 
@@ -938,6 +1346,7 @@ function cancelScript() {
 		pythonProcess = null;
 		proc.kill();
 	}
+	closeCalibOverlay();
 	setUIRunning(false);
 	document.getElementById("progressBar").value = 0;
 	document.getElementById("progressText").textContent = "";

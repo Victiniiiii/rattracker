@@ -299,6 +299,23 @@
 			</div>
 		</div>
 
+		<div id="calibOverlay" hidden>
+			<div id="calibPanel">
+				<div id="calibHeader">
+					<span id="calibTitle"></span>
+					<div id="calibHeaderBtns">
+						<button id="calibRedoBtn" class="calibActionBtn">↺ Redo</button>
+						<button id="calibConfirmBtn" class="primaryBtn calibActionBtn" disabled>✓ Confirm</button>
+						<button id="calibCancelBtn" class="calibActionBtn">✕ Cancel</button>
+					</div>
+				</div>
+				<div id="calibInstruction"></div>
+				<div id="calibCanvasWrap">
+					<canvas id="calibCanvas"></canvas>
+				</div>
+			</div>
+		</div>
+
 		<script type="module" src="main.js"></script>
 	</body>
 </html>

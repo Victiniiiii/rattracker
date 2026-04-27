@@ -4,6 +4,7 @@ import csv
 import math
 import json
 import argparse
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -421,6 +422,66 @@ def emit_progress(frame_idx, processable_frames, loop_start, app_mode):
         bar       = "#" * filled + "-" * (bar_width - filled)
         line      = f"\r[{bar}] {pct*100:5.1f}%  Frame {frame_idx}/{processable_frames}  ETA: {eta}s   "
         print(line, end="", flush=True)
+
+def appmode_calib(frame: np.ndarray, require_platform: bool, existing_pool: dict = None) -> dict | None:
+    _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    frame_b64 = __import__("base64").b64encode(buf).decode()
+    msg = {
+        "needs_calib":      True,
+        "frame_b64":        frame_b64,
+        "frame_w":          frame.shape[1],
+        "frame_h":          frame.shape[0],
+        "require_platform": require_platform,
+    }
+    if existing_pool:
+        msg["existing_pool"] = {
+            "pool_west":  list(existing_pool["pool_west"]),
+            "pool_north": list(existing_pool["pool_north"]),
+            "pool_east":  list(existing_pool["pool_east"]),
+            "pool_south": list(existing_pool["pool_south"]),
+        }
+    print(json.dumps(msg), flush=True)
+    line = sys.stdin.readline()
+    if not line:
+        return None
+    data = json.loads(line.strip())
+    if data.get("aborted"):
+        return None
+    return data  
+
+def appmode_confirm(frame: np.ndarray, cfg: dict, confirm_type: str) -> bool:
+    _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    frame_b64 = __import__("base64").b64encode(buf).decode()
+
+    if confirm_type == "pool":
+        points = {
+            "pool_west":  list(cfg["pool_west"]),
+            "pool_north": list(cfg["pool_north"]),
+            "pool_east":  list(cfg["pool_east"]),
+            "pool_south": list(cfg["pool_south"]),
+        }
+    else:
+        points = {
+            "platform_nw": list(cfg["platform_nw"]),
+            "platform_ne": list(cfg["platform_ne"]),
+            "platform_se": list(cfg["platform_se"]),
+            "platform_sw": list(cfg["platform_sw"]),
+        }
+
+    msg = {
+        "needs_confirm": True,
+        "confirm_type":  confirm_type,
+        "frame_b64":     frame_b64,
+        "frame_w":       frame.shape[1],
+        "frame_h":       frame.shape[0],
+        "points":        points,
+    }
+    print(json.dumps(msg), flush=True)
+    line = sys.stdin.readline()
+    if not line:
+        return False
+    data = json.loads(line.strip())
+    return bool(data.get("confirmed"))
 
 def pool_coords_valid(cfg: dict) -> bool:
     return all(cfg.get(k) is not None
@@ -1241,42 +1302,82 @@ def main():
     if not ret:
         raise RuntimeError("Could not read first frame from video.")
 
-    if pool_coords_valid(cfg):
-        confirmed = confirm_pool_from_args(first_frame, cfg, lang)
-        if not confirmed:
-            result = run_calibration(first_frame, lang, require_platform=require_platform)
-            if result is None:
-                raise RuntimeError("Pool calibration aborted.")
-            cfg.update(result)
-        else:
-            if require_platform:
-                if platform_coords_valid(cfg):
-                    plat_confirmed = confirm_platform_from_args(first_frame, cfg, lang)
-                    if not plat_confirmed:
-                        plat_result = run_platform_calibration(first_frame, lang)
-                        if plat_result is None:
-                            raise RuntimeError("Platform calibration aborted.")
-                        cfg.update(plat_result)
-                else:
-                    plat_result = run_platform_calibration(first_frame, lang)
-                    if plat_result is None:
-                        raise RuntimeError("Platform calibration aborted.")
-                    cfg.update(plat_result)
+    if args.appmode:
+        if pool_coords_valid(cfg):
+            pool_confirmed = appmode_confirm(first_frame, cfg, "pool")
+            if not pool_confirmed:
+                result = appmode_calib(first_frame, require_platform)
+                if result is None:
+                    raise RuntimeError("Calibration aborted.")
+                cfg.update(result)
             else:
+                if require_platform:
+                    if platform_coords_valid(cfg):
+                        plat_confirmed = appmode_confirm(first_frame, cfg, "platform")
+                        if not plat_confirmed:
+                            result = appmode_calib(first_frame, require_platform=True,
+                                                   existing_pool=cfg)
+                            if result is None:
+                                raise RuntimeError("Platform calibration aborted.")
+                            cfg.update(result)
+                    else:
+                        result = appmode_calib(first_frame, require_platform=True,
+                                               existing_pool=cfg)
+                        if result is None:
+                            raise RuntimeError("Platform calibration aborted.")
+                        cfg.update(result)
+                else:
+                    cfg["platform_nw"] = None
+                    cfg["platform_ne"] = None
+                    cfg["platform_se"] = None
+                    cfg["platform_sw"] = None
+        else:
+            result = appmode_calib(first_frame, require_platform)
+            if result is None:
+                raise RuntimeError("Calibration aborted.")
+            cfg.update(result)
+            if not require_platform:
                 cfg["platform_nw"] = None
                 cfg["platform_ne"] = None
                 cfg["platform_se"] = None
                 cfg["platform_sw"] = None
     else:
-        result = run_calibration(first_frame, lang, require_platform=require_platform)
-        if result is None:
-            raise RuntimeError("Calibration aborted.")
-        cfg.update(result)
-        if not require_platform:
-            cfg["platform_nw"] = None
-            cfg["platform_ne"] = None
-            cfg["platform_se"] = None
-            cfg["platform_sw"] = None
+        if pool_coords_valid(cfg):
+            confirmed = confirm_pool_from_args(first_frame, cfg, lang)
+            if not confirmed:
+                result = run_calibration(first_frame, lang, require_platform=require_platform)
+                if result is None:
+                    raise RuntimeError("Pool calibration aborted.")
+                cfg.update(result)
+            else:
+                if require_platform:
+                    if platform_coords_valid(cfg):
+                        plat_confirmed = confirm_platform_from_args(first_frame, cfg, lang)
+                        if not plat_confirmed:
+                            plat_result = run_platform_calibration(first_frame, lang)
+                            if plat_result is None:
+                                raise RuntimeError("Platform calibration aborted.")
+                            cfg.update(plat_result)
+                    else:
+                        plat_result = run_platform_calibration(first_frame, lang)
+                        if plat_result is None:
+                            raise RuntimeError("Platform calibration aborted.")
+                        cfg.update(plat_result)
+                else:
+                    cfg["platform_nw"] = None
+                    cfg["platform_ne"] = None
+                    cfg["platform_se"] = None
+                    cfg["platform_sw"] = None
+        else:
+            result = run_calibration(first_frame, lang, require_platform=require_platform)
+            if result is None:
+                raise RuntimeError("Calibration aborted.")
+            cfg.update(result)
+            if not require_platform:
+                cfg["platform_nw"] = None
+                cfg["platform_ne"] = None
+                cfg["platform_se"] = None
+                cfg["platform_sw"] = None
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 

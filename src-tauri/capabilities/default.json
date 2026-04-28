@@ -24,6 +24,16 @@
 					"args": true
 				}
 			]
+		},
+		{
+			"identifier": "shell:allow-kill",
+			"allow": [
+				{
+					"name": "bin/main",
+					"sidecar": true,
+					"args": true
+				}
+			]
 		}
 	]
 }

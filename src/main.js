@@ -1149,15 +1149,8 @@ function onCalibClick(e) {
 function onCalibRedo() {
 	if (!calibSession) return;
 	if (calibSession.isConfirm) {
-		// Turn this into a fresh pick session
-		calibSession.isConfirm = false;
-		calibSession.confirmType = null;
-		calibSession.poolPts = {};
-		calibSession.platPts = {};
-		calibSession.phase = "pool";
-		calibSession.step = 0;
-		calibSession.platStep = 0;
-		drawCalibCanvas();
+		sendCalibResult({ confirmed: false });
+		closeCalibOverlay();
 		return;
 	}
 	calibSession.poolPts = {};
@@ -1241,10 +1234,15 @@ async function captureVideoFrame() {
 	return new Promise((resolve, reject) => {
 		const video = document.createElement("video");
 		video.crossOrigin = "anonymous";
+		video.src = fileUrl(selectedFile);
 		video.muted = true;
-		video.preload = "auto";
+		video.preload = "metadata";
 
 		video.addEventListener("error", () => reject(new Error("Video load error")));
+
+		video.addEventListener("loadedmetadata", () => {
+			video.currentTime = seekTime;
+		});
 
 		video.addEventListener(
 			"seeked",
@@ -1262,16 +1260,6 @@ async function captureVideoFrame() {
 			},
 			{ once: true },
 		);
-
-		video.addEventListener(
-			"loadedmetadata",
-			() => {
-				video.currentTime = seekTime;
-			},
-			{ once: true },
-		);
-
-		video.src = fileUrl(selectedFile);
 	});
 }
 
@@ -1287,15 +1275,17 @@ async function runScript() {
 	let stderrLines = [];
 	let completedNormally = false;
 
-	try {
-		capturedFrame = await captureVideoFrame();
-	} catch (e) {
-		console.error("Frame capture error:", e);
-		capturedFrame = null;
-	}
-
 	const args = buildArgs(selectedFile, cfg);
 	const pythonCommand = Command.sidecar("bin/main", args);
+
+	const frameCapturePromise = captureVideoFrame()
+		.then(f => {
+			capturedFrame = f;
+		})
+		.catch(e => {
+			console.error("Frame capture error:", e);
+			capturedFrame = null;
+		});
 
 	pythonCommand.stdout.on("data", async line => {
 		let parsed;
@@ -1308,6 +1298,7 @@ async function runScript() {
 		// ── Calibration requests from Python ─────────────────────────────────
 		if (parsed.needs_calib || parsed.needs_confirm) {
 			document.getElementById("progressText").textContent = "Calibrating...";
+			await frameCapturePromise;
 			openCalibOverlay(parsed);
 			return;
 		}

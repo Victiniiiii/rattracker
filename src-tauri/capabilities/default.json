@@ -14,6 +14,16 @@
 					"args": true
 				}
 			]
+		},
+		{
+			"identifier": "shell:allow-stdin-write",
+			"allow": [
+				{
+					"name": "bin/main",
+					"sidecar": true,
+					"args": true
+				}
+			]
 		}
 	]
 }

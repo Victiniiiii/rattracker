@@ -423,16 +423,12 @@ def emit_progress(frame_idx, processable_frames, loop_start, app_mode):
         line      = f"\r[{bar}] {pct*100:5.1f}%  Frame {frame_idx}/{processable_frames}  ETA: {eta}s   "
         print(line, end="", flush=True)
 
-def appmode_calib(frame: np.ndarray, require_platform: bool, existing_pool: dict = None) -> dict | None:
-    _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-    frame_b64 = __import__("base64").b64encode(buf).decode()
+def appmode_calib(require_platform: bool, existing_pool: dict = None) -> dict | None:
     msg = {
         "needs_calib":      True,
-        "frame_b64":        frame_b64,
-        "frame_w":          frame.shape[1],
-        "frame_h":          frame.shape[0],
         "require_platform": require_platform,
     }
+
     if existing_pool:
         msg["existing_pool"] = {
             "pool_west":  list(existing_pool["pool_west"]),
@@ -440,6 +436,7 @@ def appmode_calib(frame: np.ndarray, require_platform: bool, existing_pool: dict
             "pool_east":  list(existing_pool["pool_east"]),
             "pool_south": list(existing_pool["pool_south"]),
         }
+        
     print(json.dumps(msg), flush=True)
     line = sys.stdin.readline()
     if not line:
@@ -447,12 +444,14 @@ def appmode_calib(frame: np.ndarray, require_platform: bool, existing_pool: dict
     data = json.loads(line.strip())
     if data.get("aborted"):
         return None
-    return data  
+    point_keys = ("pool_west", "pool_north", "pool_east", "pool_south",
+                  "platform_nw", "platform_ne", "platform_se", "platform_sw")
+    for key in point_keys:
+        if key in data and isinstance(data[key], str):
+            data[key] = parse_point(data[key])
+    return data
 
-def appmode_confirm(frame: np.ndarray, cfg: dict, confirm_type: str) -> bool:
-    _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-    frame_b64 = __import__("base64").b64encode(buf).decode()
-
+def appmode_confirm(cfg: dict, confirm_type: str) -> bool:
     if confirm_type == "pool":
         points = {
             "pool_west":  list(cfg["pool_west"]),
@@ -471,9 +470,6 @@ def appmode_confirm(frame: np.ndarray, cfg: dict, confirm_type: str) -> bool:
     msg = {
         "needs_confirm": True,
         "confirm_type":  confirm_type,
-        "frame_b64":     frame_b64,
-        "frame_w":       frame.shape[1],
-        "frame_h":       frame.shape[0],
         "points":        points,
     }
     print(json.dumps(msg), flush=True)
@@ -1298,31 +1294,25 @@ def main():
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
-    ret, first_frame = cap.read()
-    if not ret:
-        raise RuntimeError("Could not read first frame from video.")
-
     if args.appmode:
         if pool_coords_valid(cfg):
-            pool_confirmed = appmode_confirm(first_frame, cfg, "pool")
+            pool_confirmed = appmode_confirm(cfg, "pool")
             if not pool_confirmed:
-                result = appmode_calib(first_frame, require_platform)
+                result = appmode_calib(require_platform)
                 if result is None:
                     raise RuntimeError("Calibration aborted.")
                 cfg.update(result)
             else:
                 if require_platform:
                     if platform_coords_valid(cfg):
-                        plat_confirmed = appmode_confirm(first_frame, cfg, "platform")
+                        plat_confirmed = appmode_confirm(cfg, "platform")
                         if not plat_confirmed:
-                            result = appmode_calib(first_frame, require_platform=True,
-                                                   existing_pool=cfg)
+                            result = appmode_calib(require_platform=True, existing_pool=cfg)
                             if result is None:
                                 raise RuntimeError("Platform calibration aborted.")
                             cfg.update(result)
                     else:
-                        result = appmode_calib(first_frame, require_platform=True,
-                                               existing_pool=cfg)
+                        result = appmode_calib(require_platform=True, existing_pool=cfg)
                         if result is None:
                             raise RuntimeError("Platform calibration aborted.")
                         cfg.update(result)
@@ -1332,7 +1322,7 @@ def main():
                     cfg["platform_se"] = None
                     cfg["platform_sw"] = None
         else:
-            result = appmode_calib(first_frame, require_platform)
+            result = appmode_calib(require_platform)
             if result is None:
                 raise RuntimeError("Calibration aborted.")
             cfg.update(result)
@@ -1341,7 +1331,14 @@ def main():
                 cfg["platform_ne"] = None
                 cfg["platform_se"] = None
                 cfg["platform_sw"] = None
+
+        ret, first_frame = cap.read()
+        if not ret:
+            raise RuntimeError("Could not read first frame from video.")
     else:
+        ret, first_frame = cap.read()
+        if not ret:
+            raise RuntimeError("Could not read first frame from video.")
         if pool_coords_valid(cfg):
             confirmed = confirm_pool_from_args(first_frame, cfg, lang)
             if not confirmed:

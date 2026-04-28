@@ -986,12 +986,12 @@ function updateCalibInstruction() {
 		if (step < CALIB_POOL_STEPS.length) {
 			const key = CALIB_POOL_STEPS[step];
 			const label = poolLabels[key];
-			titleEl.textContent = `Pool calibration — step ${step + 1} / 4`;
+			titleEl.textContent = `Pool calibration - step ${step + 1} / 4`;
 			instrEl.innerHTML = `Click on the <b style="color:${CALIB_POOL_COLORS[key]}">${label}</b> point of the pool edge.`;
 			confirmBtn.disabled = true;
 		} else {
 			// All pool points placed; phase will auto-switch to "platform" if required
-			titleEl.textContent = "Pool calibration — all 4 points set";
+			titleEl.textContent = "Pool calibration - all 4 points set";
 			instrEl.innerHTML = requirePlatform ? "Pool set! Now click the <b>Confirm</b> button after picking all platform corners below." : "All 4 pool points set. Click <b>Confirm</b> to continue or <b>Redo</b> to start over.";
 			confirmBtn.disabled = requirePlatform;
 		}
@@ -1000,11 +1000,11 @@ function updateCalibInstruction() {
 		const currentPlatStep = calibSession.platStep;
 		if (currentPlatStep < CALIB_PLAT_STEPS.length) {
 			const key = CALIB_PLAT_STEPS[currentPlatStep];
-			titleEl.textContent = `Platform calibration — step ${currentPlatStep + 1} / 4`;
+			titleEl.textContent = `Platform calibration - step ${currentPlatStep + 1} / 4`;
 			instrEl.innerHTML = `Click the <b style="color:${CALIB_PLAT_COLORS[key]}">${key}</b> platform corner (clockwise).`;
 			confirmBtn.disabled = true;
 		} else {
-			titleEl.textContent = "Platform calibration — all 4 corners set";
+			titleEl.textContent = "Platform calibration - all 4 corners set";
 			instrEl.innerHTML = "All 4 platform corners set. Click <b>Confirm</b> to continue or <b>Redo</b> to start over.";
 			confirmBtn.disabled = false;
 		}
@@ -1012,17 +1012,17 @@ function updateCalibInstruction() {
 }
 
 function openCalibOverlay(msg) {
-	// msg: { needs_calib, frame_b64, frame_w, frame_h, require_platform }
-	//   or { needs_confirm, confirm_type, frame_b64, frame_w, frame_h, points }
+	// msg: { needs_calib, require_platform }
+	//   or { needs_confirm, confirm_type, points }
 	const overlay = document.getElementById("calibOverlay");
 	const canvas = document.getElementById("calibCanvas");
 	const ctx = canvas.getContext("2d");
 
-	// Figure out display size — fit within 90vw × 80vh
+	// Figure out display size - fit within 90vw × 80vh
 	const maxW = Math.floor(window.innerWidth * 0.9);
 	const maxH = Math.floor(window.innerHeight * 0.8);
-	const origW = msg.frame_w,
-		origH = msg.frame_h;
+	const origW = capturedFrame ? capturedFrame.w : maxW,
+		origH = capturedFrame ? capturedFrame.h : maxH;
 	const scale = Math.min(maxW / origW, maxH / origH, 1);
 	const dispW = Math.round(origW * scale);
 	const dispH = Math.round(origH * scale);
@@ -1100,7 +1100,7 @@ function openCalibOverlay(msg) {
 		drawCalibCanvas();
 		overlay.hidden = false;
 	};
-	image.src = "data:image/jpeg;base64," + msg.frame_b64;
+	image.src = capturedFrame ? capturedFrame.dataUrl : "";
 
 	// Wire buttons
 	document.getElementById("calibRedoBtn").onclick = onCalibRedo;
@@ -1177,7 +1177,7 @@ function onCalibConfirm() {
 	const platReady = !requirePlatform || platStep === 4;
 
 	if (isConfirm) {
-		// Send confirmed:true — Python keeps its cached coords
+		// Send confirmed:true - Python keeps its cached coords
 		sendCalibResult({ confirmed: true });
 		closeCalibOverlay();
 		return;
@@ -1212,7 +1212,7 @@ function onCalibConfirm() {
 function onCalibCancel() {
 	sendCalibResult({ aborted: true });
 	closeCalibOverlay();
-	// Kill the process — user aborted calibration
+	// Kill the process - user aborted calibration
 	if (pythonProcess) {
 		const proc = pythonProcess;
 		pythonProcess = null;
@@ -1232,6 +1232,49 @@ function sendCalibResult(data) {
 
 // ── Run / Cancel ──────────────────────────────────────────────────────────────
 
+let capturedFrame = null; // { dataUrl, w, h }
+
+async function captureVideoFrame() {
+	const startVal = document.getElementById("startTime").value;
+	const seekTime = startVal !== "" ? parseFloat(startVal) : 0;
+
+	return new Promise((resolve, reject) => {
+		const video = document.createElement("video");
+		video.crossOrigin = "anonymous";
+		video.muted = true;
+		video.preload = "auto";
+
+		video.addEventListener("error", () => reject(new Error("Video load error")));
+
+		video.addEventListener(
+			"seeked",
+			() => {
+				const canvas = document.createElement("canvas");
+				canvas.width = video.videoWidth;
+				canvas.height = video.videoHeight;
+				canvas.getContext("2d").drawImage(video, 0, 0);
+				resolve({
+					dataUrl: canvas.toDataURL("image/jpeg", 0.85),
+					w: video.videoWidth,
+					h: video.videoHeight,
+				});
+				video.src = "";
+			},
+			{ once: true },
+		);
+
+		video.addEventListener(
+			"loadedmetadata",
+			() => {
+				video.currentTime = seekTime;
+			},
+			{ once: true },
+		);
+
+		video.src = fileUrl(selectedFile);
+	});
+}
+
 async function runScript() {
 	if (!selectedFile) return;
 
@@ -1244,10 +1287,17 @@ async function runScript() {
 	let stderrLines = [];
 	let completedNormally = false;
 
-	const args = buildArgs(selectedFile, cfg);
-	pythonProcess = Command.sidecar("bin/main", args);
+	try {
+		capturedFrame = await captureVideoFrame();
+	} catch (e) {
+		console.error("Frame capture error:", e);
+		capturedFrame = null;
+	}
 
-	pythonProcess.stdout.on("data", async line => {
+	const args = buildArgs(selectedFile, cfg);
+	const pythonCommand = Command.sidecar("bin/main", args);
+
+	pythonCommand.stdout.on("data", async line => {
 		let parsed;
 		try {
 			parsed = JSON.parse(line);
@@ -1320,12 +1370,12 @@ async function runScript() {
 		}
 	});
 
-	pythonProcess.stderr.on("data", line => {
+	pythonCommand.stderr.on("data", line => {
 		console.error("stderr:", line);
 		stderrLines.push(line);
 	});
 
-	pythonProcess.on("close", code => {
+	pythonCommand.on("close", code => {
 		console.log("Process exited:", code);
 		const wasCancelled = pythonProcess === null;
 		pythonProcess = null;
@@ -1337,7 +1387,7 @@ async function runScript() {
 		}
 	});
 
-	await pythonProcess.spawn();
+	pythonProcess = await pythonCommand.spawn();
 }
 
 function cancelScript() {

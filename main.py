@@ -87,6 +87,7 @@ STRINGS = {
         "platform_confirm_hint":    "ENTER  -->  Continue with these coordinates     ESC  -->  Repick",
         "status_detected":          "DETECTED",
         "status_missing":           "MISSING",
+        "status_interpolated":      "INTERPOLATED",
         "hud_frame":                "Frame: {frame}   t = {time:.2f}s",
         "hud_position":             "Position: {pos}",
         "hud_dist":                 "Dist: {dist}",
@@ -173,6 +174,7 @@ STRINGS = {
         "platform_confirm_hint":    "ENTREE  -->  Continuer avec ces coordonnees     ESC  -->  Reprendre",
         "status_detected":          "DETECTE",
         "status_missing":           "MANQUANT",
+        "status_interpolated":      "INTERPOLE",
         "hud_frame":                "Image: {frame}   t = {time:.2f}s",
         "hud_position":             "Position: {pos}",
         "hud_dist":                 "Dist: {dist}",
@@ -259,6 +261,7 @@ STRINGS = {
         "platform_confirm_hint":    "ENTER  -->  Bu koordinatlarla devam et     ESC  -->  Yeniden sec",
         "status_detected":          "ALGILANDI",
         "status_missing":           "KAYIP",
+        "status_interpolated":      "ENTERPOLASYON",
         "hud_frame":                "Kare: {frame}   t = {time:.2f}s",
         "hud_position":             "Konum: {pos}",
         "hud_dist":                 "Dist: {dist}",
@@ -1066,7 +1069,7 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm, lang, quad_exits=N
 
 ## Rat Detection
 
-def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, prev_pos=None):
+def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, prev_pos=None, max_jump_px=None):
     if len(frame.shape) == 3:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     fg_mask = subtractor.apply(frame, learningRate=cfg.get("mog2_learning_rate", -1.0))
@@ -1096,6 +1099,8 @@ def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, p
         return None, None
     if prev_pos is not None:
         candidates.sort(key=lambda c: euclidean_px(prev_pos, (c[0], c[1])))
+        if max_jump_px is not None and euclidean_px(prev_pos, (candidates[0][0], candidates[0][1])) > max_jump_px:
+            return None, None
     else:
         candidates.sort(key=lambda c: c[2], reverse=True)
     bx, by, _, winning_cnt = candidates[0]
@@ -1484,7 +1489,7 @@ def main():
             break
 
         timestamp = (start_frame + frame_idx) / fps
-        pos, rat_contour = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos)
+        pos, rat_contour = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos, max_jump_px=rx * 0.25)
 
         if pos and prev_pos:
             seg_dist_cm = euclidean_cm(prev_pos, pos, scale_x, scale_y)
@@ -1495,8 +1500,6 @@ def main():
             if args.quadrantcross:
                 count_quadrant_exits(prev_pos, pos, west, north, east, south, q_exits)
         elif pos and prev_pos is None:
-            accumulate_static(q_stats, pos, west, north, east, south, frame_dt)
-        elif pos and prev_pos == pos:
             accumulate_static(q_stats, pos, west, north, east, south, frame_dt)
 
         if args.platformcross and has_platform and pos:
@@ -1605,8 +1608,8 @@ def main():
             cv2.circle(annotated, pos, sc(annotated, 8),  (0, 0, 255), -1)
             cv2.circle(annotated, pos, sc(annotated, 10), (255, 255, 255), 1)
 
-        status    = S(lang, "status_detected") if pos else S(lang, "status_missing")
-        hud_color = (0, 210, 0) if pos else (0, 0, 210)
+        status    = S(lang, "status_detected") if pos else S(lang, "status_interpolated")
+        hud_color = (0, 210, 0) if pos else (0, 210, 210)
         pos_str   = f"({pos[0]}, {pos[1]})" if pos else "n/a"
         hud_dist  = f"{running_dist_px:.1f} px  |  {running_dist_cm:.1f} cm"
 

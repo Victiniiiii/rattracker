@@ -1069,7 +1069,13 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm, lang, quad_exits=N
 
 ## Rat Detection
 
+<<<<<<< HEAD
 def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, prev_pos=None, max_jump_px=None):
+=======
+def _extract_candidates(frame, subtractor, cfg, pool_mask, pool, frame_idx):
+    """Run MOG2 + morphology + contour filtering. Returns list of (bx, by, area, cnt)
+    for all contours that pass area and pool filters, without any position-based selection."""
+>>>>>>> 3f148e3 (added --autoconfig, and improved previous Retroactive jump correction)
     if len(frame.shape) == 3:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     fg_mask = subtractor.apply(frame, learningRate=cfg.get("mog2_learning_rate", -1.0))
@@ -1095,16 +1101,25 @@ def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, p
         if pool is not None and not point_in_ellipse(bx, by, *pool):
             continue
         candidates.append((bx, by, area, cnt))
+    return candidates
+
+def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, prev_pos=None):
+    """Detect rat position. Returns ((bx, by), contour, raw_candidates).
+    raw_candidates is the full unfiltered list, saved by the caller for missed-frame recovery."""
+    candidates = _extract_candidates(frame, subtractor, cfg, pool_mask, pool, frame_idx)
     if not candidates:
-        return None, None
+        return None, None, []
     if prev_pos is not None:
+        # Prefer nearest candidate to last known position, but never hard-reject —
+        # if the rat jumped far (fast swim, brief occlusion) we still pick the best
+        # available rather than returning None and getting permanently stuck.
         candidates.sort(key=lambda c: euclidean_px(prev_pos, (c[0], c[1])))
         if max_jump_px is not None and euclidean_px(prev_pos, (candidates[0][0], candidates[0][1])) > max_jump_px:
             return None, None
     else:
         candidates.sort(key=lambda c: c[2], reverse=True)
     bx, by, _, winning_cnt = candidates[0]
-    return (bx, by), winning_cnt
+    return (bx, by), winning_cnt, candidates
 
 def interpolate_missing(records: list, max_gap: int = 0) -> list:
     n      = len(records)
@@ -1133,6 +1148,53 @@ def interpolate_missing(records: list, max_gap: int = 0) -> list:
             i += 1
     return result
 
+def retroactive_jump_correction(records, missed_candidates, jump_threshold_px):
+    """After re-locking on the rat following a miss streak, walk backwards through
+    the missed frames using the re-lock position as an anchor, picking the candidate
+    closest to the current backward position at each step.
+
+    This recovers real detection data for missed frames rather than relying on
+    linear interpolation across the entire gap. Whatever true gap remains in the
+    middle (genuinely zero candidates) is left as None for interpolate_missing.
+
+    missed_candidates: dict of {record_index: [(bx, by, area, cnt), ...]}
+                       populated during the main loop for every frame where pos was None.
+    jump_threshold_px: maximum px step considered continuous during backward walk.
+                       If no candidate is within this distance, the backward walk stops.
+    """
+    n = len(records)
+    i = 0
+    while i < n:
+        # Find the start of a None streak
+        if records[i]["x"] is not None:
+            i += 1
+            continue
+        streak_start = i
+        while i < n and records[i]["x"] is None:
+            i += 1
+        streak_end = i  # first non-None after the gap (exclusive), or n if never re-locked
+
+        if streak_end >= n:
+            break  # never re-locked, leave for interpolate_missing
+
+        # We have a gap: [streak_start, streak_end)
+        # Anchor the backward walk from the re-lock position
+        anchor = (records[streak_end]["x"], records[streak_end]["y"])
+
+        for j in range(streak_end - 1, streak_start - 1, -1):
+            candidates = missed_candidates.get(j, [])
+            if not candidates:
+                continue  # genuinely no detection this frame, leave as None
+            # Pick closest candidate to current backward anchor
+            candidates_sorted = sorted(candidates, key=lambda c: euclidean_px(anchor, (c[0], c[1])))
+            bx, by, _, _ = candidates_sorted[0]
+            dist = euclidean_px(anchor, (bx, by))
+            if dist > jump_threshold_px:
+                break  # gap too large, stop backward walk; leave rest for interpolation
+            records[j]["x"] = bx
+            records[j]["y"] = by
+            anchor = (bx, by)
+
 def parse_point(s):
     parts = s.split(",")
     return (int(parts[0]), int(parts[1]))
@@ -1141,6 +1203,13 @@ def fmt_pt(pt):
     return f"{pt[0]},{pt[1]}"
 
 def build_rerun_command(video_path, args, cfg):
+    # When autoconfig was used, cfg carries the resolved values; always emit them
+    # explicitly so reruns are fully deterministic without --autoconfig.
+    resolved_mog2_threshold  = cfg.get("mog2_threshold",  args.mog2_threshold)
+    resolved_morph_open_k    = cfg.get("morph_open_k",    args.morph_open_k)
+    resolved_morph_close_k   = cfg.get("morph_close_k",   args.morph_close_k)
+    resolved_mog2_history_s  = cfg.get("mog2_history_s",  args.mog2_history_s)
+
     parts = ["python main.py"]
     if args.language != "en":
         parts.append(f"--language {args.language}")
@@ -1150,10 +1219,10 @@ def build_rerun_command(video_path, args, cfg):
         parts.append(f"--end {args.end}")
     if args.pool_radius_cm != 60:
         parts.append(f"--pool_radius_cm {args.pool_radius_cm}")
-    if args.mog2_history_s != 4.0:
-        parts.append(f"--mog2_history_s {args.mog2_history_s}")
-    if args.mog2_threshold != 32:
-        parts.append(f"--mog2_threshold {args.mog2_threshold}")
+    if resolved_mog2_history_s != 4.0:
+        parts.append(f"--mog2_history_s {resolved_mog2_history_s}")
+    if resolved_mog2_threshold != 32:
+        parts.append(f"--mog2_threshold {resolved_mog2_threshold}")
     if args.mog2_detect_shadow:
         parts.append("--mog2_detect_shadow")
     if args.mog2_learning_rate != -1.0:
@@ -1162,10 +1231,10 @@ def build_rerun_command(video_path, args, cfg):
         parts.append(f"--max_interp_gap {args.max_interp_gap}")
     if args.heatmap_sigma != 0:
         parts.append(f"--heatmap_sigma {args.heatmap_sigma}")
-    if args.morph_open_k != 3:
-        parts.append(f"--morph_open_k {args.morph_open_k}")
-    if args.morph_close_k != 15:
-        parts.append(f"--morph_close_k {args.morph_close_k}")
+    if resolved_morph_open_k != 3:
+        parts.append(f"--morph_open_k {resolved_morph_open_k}")
+    if resolved_morph_close_k != 15:
+        parts.append(f"--morph_close_k {resolved_morph_close_k}")
     if args.min_contour_area != 300:
         parts.append(f"--min_contour_area {args.min_contour_area}")
     if args.max_contour_area != 12000:
@@ -1202,6 +1271,287 @@ def build_rerun_command(video_path, args, cfg):
     parts.append(f"--video {args.video}")
     return " ".join(parts)
 
+def run_autoconfig(cap, fps, total_frames, start_frame, end_frame, cfg, pool_mask, pool):
+    """Analyse the video to suggest optimal mog2_threshold, morph_open_k,
+    morph_close_k, and mog2_history_s.  Returns a dict of recommended values."""
+
+    print("[autoconfig] Starting analysis...", flush=True)
+
+    cx, cy, rx, ry, angle = pool
+    mean_pool_r_px = (rx + ry) / 2
+
+    # -------------------------------------------------------------------------
+    # Step 1 — find a reliable rat detection to measure rat vs background contrast
+    # Strategy: try the midpoint of the session first, then scan forward from
+    # there, wrapping to the start if needed.
+    # We use a temporary subtractor with default settings just for this probe.
+    # -------------------------------------------------------------------------
+    PROBE_THRESHOLD  = 32        # default threshold for the bootstrap detection
+    PROBE_WARMUP_S   = 3.0       # seconds of warmup before probing
+    probe_warmup_f   = max(1, int(PROBE_WARMUP_S * fps))
+
+    probe_cfg = dict(cfg)
+    probe_cfg["mog2_threshold"]    = PROBE_THRESHOLD
+    probe_cfg["mog2_learning_rate"] = -1.0
+    probe_cfg["debug_frames"]      = 0
+
+    def _make_probe_subtractor(start_at):
+        """Create and warm up a fresh MOG2 subtractor beginning at start_at."""
+        sub = cv2.createBackgroundSubtractorMOG2(
+            history       = probe_warmup_f,
+            varThreshold  = PROBE_THRESHOLD,
+            detectShadows = False,
+        )
+        warmup_begin = max(0, start_at - probe_warmup_f)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, warmup_begin)
+        for _ in range(start_at - warmup_begin):
+            ret, wf = cap.read()
+            if not ret:
+                break
+            if len(wf.shape) == 3:
+                wf = cv2.cvtColor(wf, cv2.COLOR_BGR2GRAY)
+            sub.apply(wf, learningRate=-1.0)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_at)
+        return sub
+
+    def _probe_for_rat(scan_start, scan_end):
+        """Scan [scan_start, scan_end) frame by frame, return (frame_bgr, pos, contour)
+        for the first successful detection, or None."""
+        sub = _make_probe_subtractor(scan_start)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, scan_start)
+        prev = None
+        for fi in range(scan_start, scan_end):
+            ret, frm = cap.read()
+            if not ret:
+                break
+            pos, cnt, _ = detect_rat(frm, sub, probe_cfg, pool_mask, pool, fi, prev)
+            if pos is not None:
+                return frm, pos, cnt
+            prev = pos
+        return None
+
+    session_mid  = start_frame + (end_frame - start_frame) // 2
+    probe_result = _probe_for_rat(session_mid, end_frame)
+    if probe_result is None:
+        probe_result = _probe_for_rat(start_frame, session_mid)
+    if probe_result is None:
+        print("[autoconfig] WARNING: could not detect rat in any frame. "
+              "Skipping threshold calibration, keeping default.", flush=True)
+        rat_brightness  = None
+        bg_brightness   = None
+        contrast        = None
+    else:
+        probe_frame, probe_pos, probe_cnt = probe_result
+
+        # Sample rat brightness from the original BGR frame inside the contour
+        mask_rat = np.zeros(probe_frame.shape[:2], dtype=np.uint8)
+        cv2.drawContours(mask_rat, [probe_cnt], -1, 255, -1)
+        gray_frame = cv2.cvtColor(probe_frame, cv2.COLOR_BGR2GRAY)
+        rat_mean   = cv2.mean(gray_frame, mask=mask_rat)
+        rat_brightness = rat_mean[0]
+
+        # Sample background brightness from getBackgroundImage inside pool mask
+        # We need a subtractor that has been warmed up; reuse the probe one but
+        # re-warm from the probe frame position so getBackgroundImage() is valid.
+        sub_bg = _make_probe_subtractor(session_mid)
+        bg_img = sub_bg.getBackgroundImage()
+        if bg_img is not None:
+            if len(bg_img.shape) == 3:
+                bg_img = cv2.cvtColor(bg_img, cv2.COLOR_BGR2GRAY)
+            bg_mean    = cv2.mean(bg_img, mask=pool_mask)
+            bg_brightness = bg_mean[0]
+        else:
+            # Fallback: sample the first frame inside the pool mask
+            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+            ret, ff = cap.read()
+            if ret:
+                ff_gray = cv2.cvtColor(ff, cv2.COLOR_BGR2GRAY) if len(ff.shape) == 3 else ff
+                bg_brightness = cv2.mean(ff_gray, mask=pool_mask)[0]
+            else:
+                bg_brightness = 128.0
+
+        contrast = abs(rat_brightness - bg_brightness)
+        print(f"[autoconfig] rat_brightness={rat_brightness:.1f}  "
+              f"bg_brightness={bg_brightness:.1f}  contrast={contrast:.1f}", flush=True)
+
+    # Map contrast → mog2_threshold
+    # High contrast → detector can afford to be less sensitive (higher threshold)
+    # Low contrast  → needs high sensitivity (lower threshold)
+    if contrast is not None:
+        if contrast >= 80:
+            suggested_threshold = 44
+        elif contrast >= 55:
+            suggested_threshold = 36
+        elif contrast >= 35:
+            suggested_threshold = 28
+        elif contrast >= 20:
+            suggested_threshold = 20
+        else:
+            suggested_threshold = 14
+    else:
+        suggested_threshold = 32  # unchanged default
+
+    print(f"[autoconfig] suggested mog2_threshold={suggested_threshold}", flush=True)
+
+    # -------------------------------------------------------------------------
+    # Step 2 — morph kernel sweep
+    # Run ~120 frames spread across the session with the suggested threshold and
+    # collect per-frame contour statistics to tune open_k and close_k.
+    # -------------------------------------------------------------------------
+    SWEEP_FRAMES   = 120
+    sweep_interval = max(1, (end_frame - start_frame) // SWEEP_FRAMES)
+
+    sweep_cfg = dict(cfg)
+    sweep_cfg["mog2_threshold"]  = suggested_threshold
+    sweep_cfg["morph_open_k"]    = cfg["morph_open_k"]   # current (resolution-scaled) defaults
+    sweep_cfg["morph_close_k"]   = cfg["morph_close_k"]
+    sweep_cfg["debug_frames"]    = 0
+
+    sweep_sub = cv2.createBackgroundSubtractorMOG2(
+        history       = cfg["mog2_history"],
+        varThreshold  = suggested_threshold,
+        detectShadows = False,
+    )
+    # Warm it up properly from start
+    warmup_begin = max(0, start_frame - cfg["mog2_history"])
+    cap.set(cv2.CAP_PROP_POS_FRAMES, warmup_begin)
+    for _ in range(start_frame - warmup_begin):
+        ret, wf = cap.read()
+        if not ret:
+            break
+        if len(wf.shape) == 3:
+            wf = cv2.cvtColor(wf, cv2.COLOR_BGR2GRAY)
+        sweep_sub.apply(wf, learningRate=-1.0)
+
+    # Collect stats: noise contour count, fragmentation ratio
+    noise_counts      = []   # number of sub-threshold contours per frame (→ open_k)
+    fragmentation     = []   # fraction of frames where top-2 candidates are suspiciously close (→ close_k)
+    displacements     = []   # consecutive detected-position distances (→ history_s)
+    prev_sweep_pos    = None
+
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+    fi = start_frame
+    while fi < end_frame:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
+        ret, frm = cap.read()
+        if not ret:
+            break
+
+        gray = cv2.cvtColor(frm, cv2.COLOR_BGR2GRAY) if len(frm.shape) == 3 else frm
+        fg   = sweep_sub.apply(gray, learningRate=-1.0)
+        if pool_mask is not None:
+            fg = cv2.bitwise_and(fg, fg, mask=pool_mask)
+
+        k_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
+                      (sweep_cfg["morph_open_k"],  sweep_cfg["morph_open_k"]))
+        k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
+                      (sweep_cfg["morph_close_k"], sweep_cfg["morph_close_k"]))
+        fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN,  k_open)
+        fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, k_close)
+
+        contours, _ = cv2.findContours(fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Split contours into noise (too small) vs candidates (in area range)
+        noise_cnt = 0
+        valid_candidates = []
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if area < sweep_cfg["min_contour_area"]:
+                noise_cnt += 1
+            elif area <= sweep_cfg["max_contour_area"]:
+                M = cv2.moments(cnt)
+                if M["m00"] > 0:
+                    bx = int(M["m10"] / M["m00"])
+                    by = int(M["m01"] / M["m00"])
+                    if pool is None or point_in_ellipse(bx, by, *pool):
+                        valid_candidates.append((bx, by, area))
+        noise_counts.append(noise_cnt)
+
+        # Fragmentation: top-2 candidates closer than 1 rat-body-width apart
+        if len(valid_candidates) >= 2:
+            valid_candidates.sort(key=lambda c: c[2], reverse=True)
+            top1 = valid_candidates[0]
+            top2 = valid_candidates[1]
+            dist_12 = euclidean_px((top1[0], top1[1]), (top2[0], top2[1]))
+            # Rat body ≈ sqrt(min_contour_area) as a rough diameter estimate
+            rat_diam_est = math.sqrt(sweep_cfg["min_contour_area"])
+            fragmentation.append(dist_12 < rat_diam_est * 2.5)
+        else:
+            fragmentation.append(False)
+
+        # Displacement for history tuning
+        if valid_candidates:
+            best = max(valid_candidates, key=lambda c: c[2])
+            best_pos = (best[0], best[1])
+            if prev_sweep_pos is not None:
+                displacements.append(euclidean_px(prev_sweep_pos, best_pos))
+            prev_sweep_pos = best_pos
+        else:
+            prev_sweep_pos = None  # reset on miss so we don't measure huge jumps across gaps
+
+        fi += sweep_interval
+
+    # -------------------------------------------------------------------------
+    # Derive morph_open_k from noise floor
+    # -------------------------------------------------------------------------
+    avg_noise = sum(noise_counts) / len(noise_counts) if noise_counts else 0
+    base_open_k = cfg["morph_open_k"]  # already resolution-scaled default
+    if avg_noise > 10:
+        open_k = base_open_k + 4
+    elif avg_noise > 5:
+        open_k = base_open_k + 2
+    else:
+        open_k = base_open_k
+    open_k = max(3, open_k | 1)  # must be odd, at least 3
+
+    # -------------------------------------------------------------------------
+    # Derive morph_close_k from fragmentation rate
+    # -------------------------------------------------------------------------
+    frag_rate = sum(fragmentation) / len(fragmentation) if fragmentation else 0
+    base_close_k = cfg["morph_close_k"]  # already resolution-scaled default
+    if frag_rate > 0.4:
+        close_k = base_close_k + 8
+    elif frag_rate > 0.2:
+        close_k = base_close_k + 4
+    else:
+        close_k = base_close_k
+    close_k = max(3, close_k | 1)
+
+    print(f"[autoconfig] avg_noise={avg_noise:.1f}  frag_rate={frag_rate:.2f}", flush=True)
+    print(f"[autoconfig] suggested morph_open_k={open_k}  morph_close_k={close_k}", flush=True)
+
+    # -------------------------------------------------------------------------
+    # Derive mog2_history_s from speed variance
+    # A rat that frequently stops risks being absorbed into the background model
+    # when history is too long — shorten it.  A rat that moves steadily can
+    # tolerate a longer history for a cleaner background estimate.
+    # -------------------------------------------------------------------------
+    if displacements:
+        near_zero   = sum(1 for d in displacements if d < 5.0)
+        zero_ratio  = near_zero / len(displacements)
+        disp_std    = float(np.std(displacements))
+
+        if zero_ratio > 0.3 or disp_std > mean_pool_r_px * 0.15:
+            # Rat stops often or moves very erratically → short history
+            suggested_history_s = 2.0
+        elif zero_ratio > 0.15:
+            suggested_history_s = 3.0
+        else:
+            suggested_history_s = 4.0  # default is fine
+        print(f"[autoconfig] zero_ratio={zero_ratio:.2f}  disp_std={disp_std:.1f}  "
+              f"suggested mog2_history_s={suggested_history_s}", flush=True)
+    else:
+        suggested_history_s = 4.0
+        print("[autoconfig] Not enough displacement data, keeping mog2_history_s=4.0", flush=True)
+
+    return {
+        "mog2_threshold":  suggested_threshold,
+        "morph_open_k":    open_k,
+        "morph_close_k":   close_k,
+        "mog2_history_s":  suggested_history_s,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Track a rat in a water maze video.")
     parser.add_argument("--video",               required=True,  type=str)
@@ -1237,6 +1587,8 @@ def main():
     parser.add_argument("--tracemapcolor",       default=None,   type=str)
     parser.add_argument("--appmode",             default=False,  action="store_true")
     parser.add_argument("--ratcolor",            default=None,   type=str)
+    parser.add_argument("--autoconfig",          default=False,  action="store_true",
+                        help="Auto-detect optimal mog2_threshold, morph kernels, and mog2_history_s from the video")
     args = parser.parse_args()
 
     tracemap_color   = parse_tracemap_color(args.tracemapcolor)
@@ -1402,6 +1754,21 @@ def main():
     pool      = (cx, cy, rx, ry, angle)
     pool_mask = make_ellipse_mask((frame_h, frame_w), *pool)
 
+    # --autoconfig: probe the video to derive optimal detection parameters.
+    # Must run after pool geometry is established (needs pool_mask and pool tuple)
+    # but before the main subtractor is created so we can apply the results.
+    if args.autoconfig:
+        ac = run_autoconfig(cap, fps, total_frames, start_frame, end_frame,
+                            cfg, pool_mask, pool)
+        cfg["mog2_threshold"] = ac["mog2_threshold"]
+        cfg["morph_open_k"]   = ac["morph_open_k"]
+        cfg["morph_close_k"]  = ac["morph_close_k"]
+        cfg["mog2_history"]   = max(1, int(round(ac["mog2_history_s"] * fps)))
+        # Store resolved history_s in cfg so build_rerun_command can emit it
+        cfg["mog2_history_s"] = ac["mog2_history_s"]
+        # Reset cap to start_frame after autoconfig probing
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
     has_platform = require_platform and platform_coords_valid(cfg)
     platform_corners = None
     if has_platform:
@@ -1473,6 +1840,7 @@ def main():
     platform_exits       = 0
     prev_inside_platform = False
     loop_start           = time.time()
+    missed_candidates    = {}  # frame record-index -> raw candidate list, for retroactive correction
 
     live_proximity_sum    = 0.0
     live_proximity_count  = 0
@@ -1489,7 +1857,14 @@ def main():
             break
 
         timestamp = (start_frame + frame_idx) / fps
+<<<<<<< HEAD
         pos, rat_contour = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos, max_jump_px=rx * 0.25)
+=======
+        pos, rat_contour, raw_candidates = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos)
+
+        if pos is None:
+            missed_candidates[frame_idx] = raw_candidates
+>>>>>>> 3f148e3 (added --autoconfig, and improved previous Retroactive jump correction)
 
         if pos and prev_pos:
             seg_dist_cm = euclidean_cm(prev_pos, pos, scale_x, scale_y)
@@ -1665,6 +2040,13 @@ def main():
     writer.release()
 
     detected      = sum(1 for r in records if r["x"] is not None)
+
+    # Before interpolating, attempt to recover missed frames using saved candidate
+    # lists walked backwards from the re-lock position. jump_threshold_px is set to
+    # half the pool's mean pixel radius — a generous but physically plausible limit.
+    jump_threshold_px = (rx + ry) / 2 * 0.5
+    retroactive_jump_correction(records, missed_candidates, jump_threshold_px)
+
     records       = interpolate_missing(records, max_gap=args.max_interp_gap)
     missing_after = sum(1 for r in records if r["x"] is None)
 

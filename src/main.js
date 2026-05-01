@@ -56,6 +56,7 @@ const DEFAULTS = {
 	max_interp_gap: 0,
 	heatmap_sigma: 0,
 	language: "en",
+	autoconfig: false,
 };
 
 const I18N = {
@@ -117,6 +118,8 @@ const I18N = {
 		max_interp_gap_desc: "Maximum number of consecutive missing frames to fill by interpolation. 0 = unlimited (old behaviour). Set e.g. 10 to avoid drawing straight lines across the pool during long dropouts.",
 		heatmap_sigma: "Heatmap Blur Sigma",
 		heatmap_sigma_desc: "Gaussian blur radius for the heatmap output. 0 = auto-calculated from video resolution (recommended). Increase for softer blobs, decrease for sharper.",
+		autoconfig: "Auto-Configure Detection",
+		autoconfig_desc: "Automatically tune MOG2 threshold, morph kernels, and history duration by analysing the video before tracking. Results are written back into settings after the run.",
 		save: "Save",
 		cancel: "Cancel",
 		select_video: "Select Video",
@@ -189,6 +192,8 @@ const I18N = {
 		max_interp_gap_desc: "Nombre max d'images manquantes consécutives à interpoler. 0 = illimité. Ex. 10 pour éviter les lignes droites pendant les longues pertes de détection.",
 		heatmap_sigma: "Sigma de flou de la carte de chaleur",
 		heatmap_sigma_desc: "Rayon du flou gaussien pour la carte de chaleur. 0 = calculé automatiquement selon la résolution (recommandé).",
+		autoconfig: "Auto-Configuration de la Détection",
+		autoconfig_desc: "Règle automatiquement le seuil MOG2, les noyaux morphologiques et la durée d'historique en analysant la vidéo avant le suivi. Les résultats sont écrits dans les paramètres après l'exécution.",
 		save: "Enregistrer",
 		cancel: "Annuler",
 		select_video: "Choisir une vidéo",
@@ -261,6 +266,8 @@ const I18N = {
 		max_interp_gap_desc: "Enterpolasyonla doldurulacak maksimum ardışık kayıp kare sayısı. 0 = sınırsız. Uzun kayıp dönemlerinde havuz üzerinde düz çizgi çizilmesini önlemek için örn. 10 girin.",
 		heatmap_sigma: "Isı Haritası Bulanıklık Sigma",
 		heatmap_sigma_desc: "Isı haritası için Gauss bulanıklığı yarıçapı. 0 = çözünürlüğe göre otomatik hesaplanır (önerilen).",
+		autoconfig: "Algılamayı Otomatik Yapılandır",
+		autoconfig_desc: "Takipten önce videoyu analiz ederek MOG2 eşiğini, morfoloji çekirdeklerini ve geçmiş süresini otomatik olarak ayarlar. Sonuçlar çalıştırma sonrası ayarlara yazılır.",
 		save: "Kaydet",
 		cancel: "İptal",
 		select_video: "Video Seç",
@@ -356,9 +363,9 @@ function cfgToShareString(c, profileName = "") {
 	if (c.latency) parts.push("--latency");
 	if (c.tracemapcolor_enabled && c.tracemapcolor) parts.push(`--tracemapcolor ${hexColorToRgbString(c.tracemapcolor)}`);
 	if (c.ratcolor_enabled && c.ratcolor) parts.push(`--ratcolor ${hexColorToRgbString(c.ratcolor)}`);
-	if (c.mog2_learning_rate != null && c.mog2_learning_rate !== -1.0) parts.push(`--mog2_learning_rate ${c.mog2_learning_rate}`);
-	if (c.max_interp_gap != null && c.max_interp_gap !== 0) parts.push(`--max_interp_gap ${c.max_interp_gap}`);
-	if (c.heatmap_sigma != null && c.heatmap_sigma !== 0) parts.push(`--heatmap_sigma ${c.heatmap_sigma}`);
+	if (c.mog2_learning_rate != null && c.mog2_learning_rate != -1.0) parts.push(`--mog2_learning_rate ${c.mog2_learning_rate}`);
+	if (c.max_interp_gap != null && c.max_interp_gap != 0) parts.push(`--max_interp_gap ${c.max_interp_gap}`);
+	if (c.heatmap_sigma != null && c.heatmap_sigma != 0) parts.push(`--heatmap_sigma ${c.heatmap_sigma}`);
 	return parts.join(" ");
 }
 
@@ -748,9 +755,10 @@ function buildArgs(filePath, currentCfg) {
 	if (currentCfg.latency) args.push("--latency");
 	if (currentCfg.tracemapcolor_enabled && currentCfg.tracemapcolor) args.push("--tracemapcolor", hexColorToRgbString(currentCfg.tracemapcolor));
 	if (currentCfg.ratcolor_enabled && currentCfg.ratcolor) args.push("--ratcolor", hexColorToRgbString(currentCfg.ratcolor));
-	if (currentCfg.mog2_learning_rate != null && currentCfg.mog2_learning_rate !== -1.0) args.push("--mog2_learning_rate", String(currentCfg.mog2_learning_rate));
-	if (currentCfg.max_interp_gap != null && currentCfg.max_interp_gap !== 0) args.push("--max_interp_gap", String(currentCfg.max_interp_gap));
-	if (currentCfg.heatmap_sigma != null && currentCfg.heatmap_sigma !== 0) args.push("--heatmap_sigma", String(currentCfg.heatmap_sigma));
+	if (currentCfg.mog2_learning_rate != null && currentCfg.mog2_learning_rate != -1.0) args.push("--mog2_learning_rate", String(currentCfg.mog2_learning_rate));
+	if (currentCfg.max_interp_gap != null && currentCfg.max_interp_gap != 0) args.push("--max_interp_gap", String(currentCfg.max_interp_gap));
+	if (currentCfg.heatmap_sigma != null && currentCfg.heatmap_sigma != 0) args.push("--heatmap_sigma", String(currentCfg.heatmap_sigma));
+	if (currentCfg.autoconfig) args.push("--autoconfig");
 	args.push("--appmode");
 	return args;
 }
@@ -890,7 +898,7 @@ function drawCalibCanvas() {
 		drawDot(ctx, px, py, color, label);
 	});
 
-	if (poolKeys.length === 4) {
+	if (poolKeys.length == 4) {
 		const w = poolPts["WEST"],
 			n = poolPts["NORTH"],
 			e = poolPts["EAST"],
@@ -937,10 +945,10 @@ function drawCalibCanvas() {
 		ctx.beginPath();
 		for (let i = 0; i < platKeys.length; i++) {
 			const pt = platPts[platKeys[i]];
-			if (i === 0) ctx.moveTo(pt[0], pt[1]);
+			if (i == 0) ctx.moveTo(pt[0], pt[1]);
 			else ctx.lineTo(pt[0], pt[1]);
 		}
-		if (platKeys.length === 4) ctx.closePath();
+		if (platKeys.length == 4) ctx.closePath();
 		ctx.stroke();
 		ctx.restore();
 	}
@@ -976,13 +984,13 @@ function updateCalibInstruction() {
 	const poolLabels = CALIB_POOL_LABELS[cfg.language] || CALIB_POOL_LABELS.en;
 
 	if (isConfirm) {
-		titleEl.textContent = confirmType === "pool" ? "Saved pool coordinates found" : "Saved platform coordinates found";
+		titleEl.textContent = confirmType == "pool" ? "Saved pool coordinates found" : "Saved platform coordinates found";
 		instrEl.innerHTML = "Use these coordinates, or click <b>Redo</b> to pick new ones.";
 		confirmBtn.disabled = false;
 		return;
 	}
 
-	if (phase === "pool") {
+	if (phase == "pool") {
 		if (step < CALIB_POOL_STEPS.length) {
 			const key = CALIB_POOL_STEPS[step];
 			const label = poolLabels[key];
@@ -996,7 +1004,7 @@ function updateCalibInstruction() {
 			confirmBtn.disabled = requirePlatform;
 		}
 	} else {
-		// phase === "platform"
+		// phase == "platform"
 		const currentPlatStep = calibSession.platStep;
 		if (currentPlatStep < CALIB_PLAT_STEPS.length) {
 			const key = CALIB_PLAT_STEPS[currentPlatStep];
@@ -1044,7 +1052,7 @@ function openCalibOverlay(msg) {
 		platStep = 0;
 	let poolStep = 0;
 
-	if (isConfirm && confirmType === "pool") {
+	if (isConfirm && confirmType == "pool") {
 		const p = msg.points;
 		poolPts = {
 			WEST: [p.pool_west[0] * scaleX, p.pool_west[1] * scaleY],
@@ -1053,7 +1061,7 @@ function openCalibOverlay(msg) {
 			SOUTH: [p.pool_south[0] * scaleX, p.pool_south[1] * scaleY],
 		};
 		poolStep = 4;
-	} else if (isConfirm && confirmType === "platform") {
+	} else if (isConfirm && confirmType == "platform") {
 		const p = msg.points;
 		platPts = {
 			NW: [p.platform_nw[0] * scaleX, p.platform_nw[1] * scaleY],
@@ -1126,14 +1134,14 @@ function onCalibClick(e) {
 	// store in display coords; we convert back to original at submission time
 	const pt = [dispX, dispY];
 
-	if (calibSession.phase === "pool") {
+	if (calibSession.phase == "pool") {
 		if (calibSession.step >= CALIB_POOL_STEPS.length) return;
 		const key = CALIB_POOL_STEPS[calibSession.step];
 		calibSession.poolPts[key] = pt;
 		calibSession.step++;
 
 		// Auto-advance phase when all 4 pool points are set and platform is required
-		if (calibSession.step === CALIB_POOL_STEPS.length && requirePlatform) {
+		if (calibSession.step == CALIB_POOL_STEPS.length && requirePlatform) {
 			calibSession.phase = "platform";
 		}
 	} else {
@@ -1166,8 +1174,8 @@ function onCalibConfirm() {
 	const { scaleX, scaleY, isConfirm, confirmType, requirePlatform, poolPts, platPts, platStep, step } = calibSession;
 
 	// Validate we have enough points
-	const poolReady = Object.keys(poolPts).length === 4;
-	const platReady = !requirePlatform || platStep === 4;
+	const poolReady = Object.keys(poolPts).length == 4;
+	const platReady = !requirePlatform || platStep == 4;
 
 	if (isConfirm) {
 		// Send confirmed:true - Python keeps its cached coords
@@ -1229,7 +1237,7 @@ let capturedFrame = null; // { dataUrl, w, h }
 
 async function captureVideoFrame() {
 	const startVal = document.getElementById("startTime").value;
-	const seekTime = startVal !== "" ? parseFloat(startVal) : 0;
+	const seekTime = startVal != "" ? parseFloat(startVal) : 0;
 
 	return new Promise((resolve, reject) => {
 		const video = document.createElement("video");
@@ -1292,6 +1300,12 @@ async function runScript() {
 		try {
 			parsed = JSON.parse(line);
 		} catch {
+			// Non-JSON stdout — surface autoconfig progress lines to the user
+			const trimmed = line.trim();
+			if (trimmed.startsWith("[autoconfig]")) {
+				// Strip the prefix tag and show the rest in the progress text area
+				document.getElementById("progressText").textContent = trimmed.replace("[autoconfig]", "🔍").trim();
+			}
 			return;
 		}
 
@@ -1320,6 +1334,20 @@ async function runScript() {
 			if (parsed.platform_ne) cfg.platform_ne = formatPoint(parsed.platform_ne);
 			if (parsed.platform_se) cfg.platform_se = formatPoint(parsed.platform_se);
 			if (parsed.platform_sw) cfg.platform_sw = formatPoint(parsed.platform_sw);
+
+			// Write autoconfig-resolved detection values back into cfg so the
+			// form reflects what was actually used, and future runs without
+			// --autoconfig use the tuned values directly.
+			if (parsed.ac_mog2_threshold != null) cfg.mog2_threshold = parsed.ac_mog2_threshold;
+			if (parsed.ac_morph_open_k != null) cfg.morph_open_k = parsed.ac_morph_open_k;
+			if (parsed.ac_morph_close_k != null) cfg.morph_close_k = parsed.ac_morph_close_k;
+			if (parsed.ac_mog2_history_s != null) cfg.mog2_history_s = parsed.ac_mog2_history_s;
+
+			// Autoconfig is a one-shot action — uncheck it so the next run uses
+			// the baked-in resolved values without re-running the probe.
+			if (parsed.ac_mog2_threshold != null) {
+				cfg.autoconfig = false;
+			}
 
 			saveConfig(cfg);
 			populateForm(cfg);
@@ -1368,12 +1396,12 @@ async function runScript() {
 
 	pythonCommand.on("close", code => {
 		console.log("Process exited:", code);
-		const wasCancelled = pythonProcess === null;
+		const wasCancelled = pythonProcess == null;
 		pythonProcess = null;
 		closeCalibOverlay();
 		setUIRunning(false);
 
-		if (!completedNormally && !wasCancelled && code !== 0) {
+		if (!completedNormally && !wasCancelled && code != 0) {
 			showErrorModal(code, stderrLines);
 		}
 	});

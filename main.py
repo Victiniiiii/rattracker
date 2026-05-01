@@ -1069,13 +1069,9 @@ def draw_leaderboard(img, stats, total_time_s, total_dist_cm, lang, quad_exits=N
 
 ## Rat Detection
 
-<<<<<<< HEAD
-def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, prev_pos=None, max_jump_px=None):
-=======
 def _extract_candidates(frame, subtractor, cfg, pool_mask, pool, frame_idx):
     """Run MOG2 + morphology + contour filtering. Returns list of (bx, by, area, cnt)
     for all contours that pass area and pool filters, without any position-based selection."""
->>>>>>> 3f148e3 (added --autoconfig, and improved previous Retroactive jump correction)
     if len(frame.shape) == 3:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     fg_mask = subtractor.apply(frame, learningRate=cfg.get("mog2_learning_rate", -1.0))
@@ -1114,8 +1110,6 @@ def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, p
         # if the rat jumped far (fast swim, brief occlusion) we still pick the best
         # available rather than returning None and getting permanently stuck.
         candidates.sort(key=lambda c: euclidean_px(prev_pos, (c[0], c[1])))
-        if max_jump_px is not None and euclidean_px(prev_pos, (candidates[0][0], candidates[0][1])) > max_jump_px:
-            return None, None
     else:
         candidates.sort(key=lambda c: c[2], reverse=True)
     bx, by, _, winning_cnt = candidates[0]
@@ -1857,14 +1851,10 @@ def main():
             break
 
         timestamp = (start_frame + frame_idx) / fps
-<<<<<<< HEAD
-        pos, rat_contour = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos, max_jump_px=rx * 0.25)
-=======
         pos, rat_contour, raw_candidates = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos)
 
         if pos is None:
             missed_candidates[frame_idx] = raw_candidates
->>>>>>> 3f148e3 (added --autoconfig, and improved previous Retroactive jump correction)
 
         if pos and prev_pos:
             seg_dist_cm = euclidean_cm(prev_pos, pos, scale_x, scale_y)
@@ -1875,6 +1865,8 @@ def main():
             if args.quadrantcross:
                 count_quadrant_exits(prev_pos, pos, west, north, east, south, q_exits)
         elif pos and prev_pos is None:
+            accumulate_static(q_stats, pos, west, north, east, south, frame_dt)
+        elif pos and prev_pos == pos:
             accumulate_static(q_stats, pos, west, north, east, south, frame_dt)
 
         if args.platformcross and has_platform and pos:
@@ -2261,6 +2253,10 @@ def main():
             "latency_dist_cm":  round(latency_dist_cm, 3)  if latency_done else None,
             "para_latency_time_s":  round(para_latency_time_s, 3)  if para_latency_done else None,
             "para_latency_dist_cm": round(para_latency_dist_cm, 3) if para_latency_done else None,
+            "ac_mog2_threshold":  cfg["mog2_threshold"]  if args.autoconfig else None,
+            "ac_morph_open_k":    cfg["morph_open_k"]    if args.autoconfig else None,
+            "ac_morph_close_k":   cfg["morph_close_k"]   if args.autoconfig else None,
+            "ac_mog2_history_s":  cfg.get("mog2_history_s", args.mog2_history_s) if args.autoconfig else None,
         }
         if args.quadrantcross:
             out["quadrant_exits"] = q_exits

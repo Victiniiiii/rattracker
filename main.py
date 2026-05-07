@@ -1106,14 +1106,70 @@ def detect_rat(frame, subtractor, cfg, pool_mask=None, pool=None, frame_idx=0, p
     if not candidates:
         return None, None, []
     if prev_pos is not None:
-        # Prefer nearest candidate to last known position, but never hard-reject —
-        # if the rat jumped far (fast swim, brief occlusion) we still pick the best
-        # available rather than returning None and getting permanently stuck.
         candidates.sort(key=lambda c: euclidean_px(prev_pos, (c[0], c[1])))
     else:
         candidates.sort(key=lambda c: c[2], reverse=True)
-    bx, by, _, winning_cnt = candidates[0]
+    bx, by, area, winning_cnt = candidates[0]
+
+    # Partial-blob smoother: if the winning blob is suspiciously small AND its
+    # centroid is close to prev_pos, the rat is likely being partially absorbed
+    # into the background (ghost absorption). Blend the centroid toward prev_pos
+    # rather than jumping to the partial blob's center.
+    # If the blob is small but FAR from prev_pos, trust it — the rat has moved
+    # or is partially visible after a dive, and we should follow it.
+    median_blob_area   = cfg.get("median_blob_area")
+    rat_body_radius_px = cfg.get("rat_body_radius_px")
+    if (prev_pos is not None
+            and median_blob_area is not None
+            and rat_body_radius_px is not None
+            and area < median_blob_area * 0.50):
+        dist_to_prev = euclidean_px(prev_pos, (bx, by))
+        if dist_to_prev <= rat_body_radius_px * 2.0:
+            # Partial detection near last position — blend centroid toward prev_pos.
+            # Weight by how small the blob is: smaller blob = more pull toward prev_pos.
+            smallness = 1.0 - (area / (median_blob_area * 0.50))  # 0..1
+            alpha = smallness * 0.6  # max 60% pull toward prev_pos
+            bx = int(round(bx * (1 - alpha) + prev_pos[0] * alpha))
+            by = int(round(by * (1 - alpha) + prev_pos[1] * alpha))
+
     return (bx, by), winning_cnt, candidates
+
+def detect_rat_appearance(frame, cfg, pool_mask, pool, prev_pos=None):
+    """Appearance-based fallback detector. Thresholds the raw frame by brightness
+    to find the rat as the brightest large blob in the pool, regardless of motion.
+    Returns list of (bx, by, area, cnt) same format as _extract_candidates."""
+    appearance_threshold = cfg.get("appearance_threshold")
+    if appearance_threshold is None:
+        return []
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if len(frame.shape) == 3 else frame.copy()
+    _, binary = cv2.threshold(gray, appearance_threshold, 255, cv2.THRESH_BINARY)
+    if pool_mask is not None:
+        binary = cv2.bitwise_and(binary, binary, mask=pool_mask)
+    k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
+                  (cfg["morph_close_k"], cfg["morph_close_k"]))
+    binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, k_close)
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    candidates = []
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area < cfg["min_contour_area"] or area > cfg["max_contour_area"]:
+            continue
+        M = cv2.moments(cnt)
+        if M["m00"] == 0:
+            continue
+        bx = int(M["m10"] / M["m00"])
+        by = int(M["m01"] / M["m00"])
+        if pool is not None and not point_in_ellipse(bx, by, *pool):
+            continue
+        candidates.append((bx, by, area, cnt))
+    if not candidates:
+        return []
+    if prev_pos is not None:
+        candidates.sort(key=lambda c: euclidean_px(prev_pos, (c[0], c[1])))
+    else:
+        candidates.sort(key=lambda c: c[2], reverse=True)
+    return candidates
+
 
 def interpolate_missing(records: list, max_gap: int = 0) -> list:
     n      = len(records)
@@ -1251,6 +1307,8 @@ def build_rerun_command(video_path, args, cfg):
         parts.append(f"--tracemapcolor {args.tracemapcolor}")
     if args.ratcolor is not None:
         parts.append(f"--ratcolor {args.ratcolor}")
+    if args.colorall:
+        parts.append("--colorall")
     parts.append(f"--pool_west {fmt_pt(cfg['pool_west'])}")
     parts.append(f"--pool_north {fmt_pt(cfg['pool_north'])}")
     parts.append(f"--pool_east {fmt_pt(cfg['pool_east'])}")
@@ -1335,30 +1393,55 @@ def run_autoconfig(cap, fps, total_frames, start_frame, end_frame, cfg, pool_mas
         bg_brightness   = None
         contrast        = None
     else:
-        probe_frame, probe_pos, probe_cnt = probe_result
+        # Collect brightness samples from multiple spread-out probe frames
+        BRIGHTNESS_SAMPLES = 7
+        sample_interval    = max(1, (end_frame - start_frame) // BRIGHTNESS_SAMPLES)
+        rat_samples        = []
+        bg_samples         = []
 
-        # Sample rat brightness from the original BGR frame inside the contour
-        mask_rat = np.zeros(probe_frame.shape[:2], dtype=np.uint8)
-        cv2.drawContours(mask_rat, [probe_cnt], -1, 255, -1)
-        gray_frame = cv2.cvtColor(probe_frame, cv2.COLOR_BGR2GRAY)
-        rat_mean   = cv2.mean(gray_frame, mask=mask_rat)
-        rat_brightness = rat_mean[0]
+        # Seed one subtractor from start_frame for consistent bg estimates
+        sub_multi = _make_probe_subtractor(start_frame)
 
-        # Sample background brightness from getBackgroundImage inside pool mask
-        # We need a subtractor that has been warmed up; reuse the probe one but
-        # re-warm from the probe frame position so getBackgroundImage() is valid.
-        sub_bg = _make_probe_subtractor(session_mid)
-        bg_img = sub_bg.getBackgroundImage()
-        if bg_img is not None:
-            if len(bg_img.shape) == 3:
-                bg_img = cv2.cvtColor(bg_img, cv2.COLOR_BGR2GRAY)
-            bg_mean    = cv2.mean(bg_img, mask=pool_mask)
-            bg_brightness = bg_mean[0]
+        for si in range(BRIGHTNESS_SAMPLES):
+            fi = start_frame + si * sample_interval
+            if fi >= end_frame:
+                break
+            res = _probe_for_rat(fi, min(fi + max(1, sample_interval), end_frame))
+            if res is None:
+                continue
+            s_frame, s_pos, s_cnt = res
+            mask_rat = np.zeros(s_frame.shape[:2], dtype=np.uint8)
+            cv2.drawContours(mask_rat, [s_cnt], -1, 255, -1)
+            gray_f = cv2.cvtColor(s_frame, cv2.COLOR_BGR2GRAY)
+            rat_samples.append(cv2.mean(gray_f, mask=mask_rat)[0])
+
+            cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
+            for _ in range(min(probe_warmup_f, fi - start_frame if fi > start_frame else probe_warmup_f)):
+                ret2, wf2 = cap.read()
+                if not ret2:
+                    break
+                if len(wf2.shape) == 3:
+                    wf2 = cv2.cvtColor(wf2, cv2.COLOR_BGR2GRAY)
+                sub_multi.apply(wf2, learningRate=-1.0)
+            bg_img = sub_multi.getBackgroundImage()
+            if bg_img is not None:
+                if len(bg_img.shape) == 3:
+                    bg_img = cv2.cvtColor(bg_img, cv2.COLOR_BGR2GRAY)
+                bg_samples.append(cv2.mean(bg_img, mask=pool_mask)[0])
+
+        if rat_samples and bg_samples:
+            rat_brightness = float(np.median(rat_samples))
+            bg_brightness  = float(np.median(bg_samples))
         else:
-            # Fallback: sample the first frame inside the pool mask
+            # Fallback to original single-frame probe
+            probe_frame, probe_pos, probe_cnt = probe_result
+            mask_rat = np.zeros(probe_frame.shape[:2], dtype=np.uint8)
+            cv2.drawContours(mask_rat, [probe_cnt], -1, 255, -1)
+            gray_frame = cv2.cvtColor(probe_frame, cv2.COLOR_BGR2GRAY)
+            rat_brightness = cv2.mean(gray_frame, mask=mask_rat)[0]
             cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-            ret, ff = cap.read()
-            if ret:
+            ret_fb, ff = cap.read()
+            if ret_fb:
                 ff_gray = cv2.cvtColor(ff, cv2.COLOR_BGR2GRAY) if len(ff.shape) == 3 else ff
                 bg_brightness = cv2.mean(ff_gray, mask=pool_mask)[0]
             else:
@@ -1366,26 +1449,91 @@ def run_autoconfig(cap, fps, total_frames, start_frame, end_frame, cfg, pool_mas
 
         contrast = abs(rat_brightness - bg_brightness)
         print(f"[autoconfig] rat_brightness={rat_brightness:.1f}  "
-              f"bg_brightness={bg_brightness:.1f}  contrast={contrast:.1f}", flush=True)
+              f"bg_brightness={bg_brightness:.1f}  contrast={contrast:.1f}  "
+              f"(from {len(rat_samples)} samples)", flush=True)
 
-    # Map contrast → mog2_threshold
-    # High contrast → detector can afford to be less sensitive (higher threshold)
-    # Low contrast  → needs high sensitivity (lower threshold)
-    if contrast is not None:
-        if contrast >= 80:
-            suggested_threshold = 44
-        elif contrast >= 55:
-            suggested_threshold = 36
-        elif contrast >= 35:
-            suggested_threshold = 28
-        elif contrast >= 20:
-            suggested_threshold = 20
-        else:
-            suggested_threshold = 14
+    # Compute appearance_threshold for the fallback detector:
+    # midpoint between rat and background brightness.
+    if rat_brightness is not None and bg_brightness is not None:
+        appearance_threshold = int((rat_brightness + bg_brightness) / 2)
     else:
-        suggested_threshold = 32  # unchanged default
+        appearance_threshold = 180  # safe default for bright rat / dark pool
+    print(f"[autoconfig] appearance_threshold={appearance_threshold}", flush=True)
 
-    print(f"[autoconfig] suggested mog2_threshold={suggested_threshold}", flush=True)
+    # -------------------------------------------------------------------------
+    # Measure temporal variance of the rat region to calibrate mog2_threshold.
+    # MOG2 responds to per-pixel frame-to-frame change, not absolute brightness.
+    # We collect N consecutive frames around a known rat detection and compute
+    # the std-dev of each pixel inside the rat mask over time — that is exactly
+    # the signal MOG2 models.  The median per-pixel std-dev inside the rat
+    # region tells us how much the rat pixels actually vary, so we can set the
+    # threshold just below that to reliably pick them up.
+    # -------------------------------------------------------------------------
+    TVAR_FRAMES  = 12   # consecutive frames to sample
+    TVAR_SAMPLES = 4    # number of spread-out probe locations to average
+
+    tvar_values = []
+
+    if probe_result is not None:
+        tvar_interval = max(1, (end_frame - start_frame) // (TVAR_SAMPLES + 1))
+        for si in range(TVAR_SAMPLES):
+            anchor = start_frame + (si + 1) * tvar_interval
+            anchor = min(anchor, end_frame - TVAR_FRAMES - 1)
+            res = _probe_for_rat(anchor, min(anchor + tvar_interval, end_frame))
+            if res is None:
+                continue
+            t_frame, t_pos, t_cnt = res
+            mask_rat = np.zeros(t_frame.shape[:2], dtype=np.uint8)
+            cv2.drawContours(mask_rat, [t_cnt], -1, 255, -1)
+            pixel_coords = np.column_stack(np.where(mask_rat > 0))
+            if len(pixel_coords) == 0:
+                continue
+            # Collect TVAR_FRAMES consecutive frames starting at anchor
+            cap.set(cv2.CAP_PROP_POS_FRAMES, anchor)
+            pixel_stack = []
+            for _ in range(TVAR_FRAMES):
+                ret2, frm2 = cap.read()
+                if not ret2:
+                    break
+                gray2 = cv2.cvtColor(frm2, cv2.COLOR_BGR2GRAY) if len(frm2.shape) == 3 else frm2
+                vals = gray2[pixel_coords[:, 0], pixel_coords[:, 1]].astype(np.float32)
+                pixel_stack.append(vals)
+            if len(pixel_stack) < 3:
+                continue
+            pixel_stack = np.array(pixel_stack)  # shape: (frames, pixels)
+            per_pixel_std = np.std(pixel_stack, axis=0)
+            tvar_values.append(float(np.median(per_pixel_std)))
+
+    if tvar_values:
+        median_tvar = float(np.median(tvar_values))
+        # Set threshold to ~80% of median temporal variance so rat pixels reliably
+        # exceed it, while static background pixels (near-zero variance) don't.
+        suggested_threshold = max(8, int(round(median_tvar * 0.80)))
+        print(f"[autoconfig] median_temporal_variance={median_tvar:.1f}  "
+              f"suggested mog2_threshold={suggested_threshold}", flush=True)
+    else:
+        # Fallback: use contrast-based estimate if temporal variance failed
+        if contrast is not None:
+            CONTRAST_ANCHORS = [
+                (0,   10), (20,  16), (35,  24),
+                (55,  32), (80,  42), (120, 50),
+            ]
+            if contrast <= CONTRAST_ANCHORS[0][0]:
+                suggested_threshold = CONTRAST_ANCHORS[0][1]
+            elif contrast >= CONTRAST_ANCHORS[-1][0]:
+                suggested_threshold = CONTRAST_ANCHORS[-1][1]
+            else:
+                for i in range(len(CONTRAST_ANCHORS) - 1):
+                    c0, t0 = CONTRAST_ANCHORS[i]
+                    c1, t1 = CONTRAST_ANCHORS[i + 1]
+                    if c0 <= contrast <= c1:
+                        frac = (contrast - c0) / (c1 - c0)
+                        suggested_threshold = int(round(t0 + frac * (t1 - t0)))
+                        break
+        else:
+            suggested_threshold = 32
+        print(f"[autoconfig] temporal variance unavailable, "
+              f"suggested mog2_threshold={suggested_threshold} (contrast fallback)", flush=True)
 
     # -------------------------------------------------------------------------
     # Step 2 — morph kernel sweep
@@ -1417,10 +1565,11 @@ def run_autoconfig(cap, fps, total_frames, start_frame, end_frame, cfg, pool_mas
             wf = cv2.cvtColor(wf, cv2.COLOR_BGR2GRAY)
         sweep_sub.apply(wf, learningRate=-1.0)
 
-    # Collect stats: noise contour count, fragmentation ratio
-    noise_counts      = []   # number of sub-threshold contours per frame (→ open_k)
-    fragmentation     = []   # fraction of frames where top-2 candidates are suspiciously close (→ close_k)
-    displacements     = []   # consecutive detected-position distances (→ history_s)
+    # Collect stats: noise contour count, fragmentation ratio, blob areas, displacements
+    noise_counts      = []
+    fragmentation     = []
+    displacements     = []
+    blob_areas        = []   # winning candidate area per frame (→ median_blob_area)
     prev_sweep_pos    = None
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
@@ -1461,27 +1610,29 @@ def run_autoconfig(cap, fps, total_frames, start_frame, end_frame, cfg, pool_mas
                         valid_candidates.append((bx, by, area))
         noise_counts.append(noise_cnt)
 
-        # Fragmentation: top-2 candidates closer than 1 rat-body-width apart
+        # Collect split-candidate pairs for two-pass fragmentation evaluation.
+        # We store (dist, combined_area) for frames with 2+ valid candidates;
+        # evaluation happens after median_blob_area is known.
         if len(valid_candidates) >= 2:
             valid_candidates.sort(key=lambda c: c[2], reverse=True)
             top1 = valid_candidates[0]
             top2 = valid_candidates[1]
-            dist_12 = euclidean_px((top1[0], top1[1]), (top2[0], top2[1]))
-            # Rat body ≈ sqrt(min_contour_area) as a rough diameter estimate
-            rat_diam_est = math.sqrt(sweep_cfg["min_contour_area"])
-            fragmentation.append(dist_12 < rat_diam_est * 2.5)
+            dist_12       = euclidean_px((top1[0], top1[1]), (top2[0], top2[1]))
+            combined_area = top1[2] + top2[2]
+            fragmentation.append((dist_12, combined_area))
         else:
-            fragmentation.append(False)
+            fragmentation.append(None)
 
-        # Displacement for history tuning
+        # Collect winning blob area and displacement
         if valid_candidates:
             best = max(valid_candidates, key=lambda c: c[2])
             best_pos = (best[0], best[1])
+            blob_areas.append(best[2])
             if prev_sweep_pos is not None:
                 displacements.append(euclidean_px(prev_sweep_pos, best_pos))
             prev_sweep_pos = best_pos
         else:
-            prev_sweep_pos = None  # reset on miss so we don't measure huge jumps across gaps
+            prev_sweep_pos = None
 
         fi += sweep_interval
 
@@ -1499,14 +1650,43 @@ def run_autoconfig(cap, fps, total_frames, start_frame, end_frame, cfg, pool_mas
     open_k = max(3, open_k | 1)  # must be odd, at least 3
 
     # -------------------------------------------------------------------------
-    # Derive morph_close_k from fragmentation rate
+    # Derive median_blob_area and rat_body_radius_px from real detections
     # -------------------------------------------------------------------------
-    frag_rate = sum(fragmentation) / len(fragmentation) if fragmentation else 0
-    base_close_k = cfg["morph_close_k"]  # already resolution-scaled default
-    if frag_rate > 0.4:
-        close_k = base_close_k + 8
-    elif frag_rate > 0.2:
-        close_k = base_close_k + 4
+    if blob_areas:
+        median_blob_area   = float(np.median(blob_areas))
+        rat_body_radius_px = math.sqrt(median_blob_area / math.pi)
+        partial_threshold  = median_blob_area * 0.50
+        partial_rate       = sum(1 for a in blob_areas if a < partial_threshold) / len(blob_areas)
+    else:
+        median_blob_area   = cfg["min_contour_area"] * 3.0
+        rat_body_radius_px = math.sqrt(median_blob_area / math.pi)
+        partial_rate       = 0.0
+    print(f"[autoconfig] median_blob_area={median_blob_area:.0f}  "
+          f"rat_body_radius_px={rat_body_radius_px:.1f}  partial_rate={partial_rate:.2f}", flush=True)
+
+    # -------------------------------------------------------------------------
+    # Derive morph_close_k from split-rat fragmentation rate (two-pass)
+    # A split rat produces two blobs whose combined area ≈ median_blob_area and
+    # whose centroid distance is within [1×, 3×] rat_body_radius — not noise-close,
+    # not two separate objects far apart.
+    # -------------------------------------------------------------------------
+    rat_diam_px = rat_body_radius_px * 2.0
+    split_flags = []
+    for entry in fragmentation:
+        if entry is None:
+            split_flags.append(False)
+            continue
+        dist_12, combined_area = entry
+        area_match = 0.5 * median_blob_area <= combined_area <= 1.6 * median_blob_area
+        dist_match = rat_diam_px * 0.8 <= dist_12 <= rat_diam_px * 3.5
+        split_flags.append(area_match and dist_match)
+
+    frag_rate = sum(split_flags) / len(split_flags) if split_flags else 0
+    base_close_k = cfg["morph_close_k"]
+    if frag_rate > 0.3:
+        close_k = base_close_k + 12
+    elif frag_rate > 0.15:
+        close_k = base_close_k + 6
     else:
         close_k = base_close_k
     close_k = max(3, close_k | 1)
@@ -1515,23 +1695,21 @@ def run_autoconfig(cap, fps, total_frames, start_frame, end_frame, cfg, pool_mas
     print(f"[autoconfig] suggested morph_open_k={open_k}  morph_close_k={close_k}", flush=True)
 
     # -------------------------------------------------------------------------
-    # Derive mog2_history_s from speed variance
-    # A rat that frequently stops risks being absorbed into the background model
-    # when history is too long — shorten it.  A rat that moves steadily can
-    # tolerate a longer history for a cleaner background estimate.
+    # Derive mog2_history_s from speed variance AND partial-detection rate
     # -------------------------------------------------------------------------
     if displacements:
         near_zero   = sum(1 for d in displacements if d < 5.0)
         zero_ratio  = near_zero / len(displacements)
         disp_std    = float(np.std(displacements))
 
-        if zero_ratio > 0.3 or disp_std > mean_pool_r_px * 0.15:
-            # Rat stops often or moves very erratically → short history
-            suggested_history_s = 2.0
-        elif zero_ratio > 0.15:
-            suggested_history_s = 3.0
+        # Partial-detection rate is the most direct signal for ghost absorption:
+        # if the rat is frequently only half-detected, shorten history aggressively.
+        if partial_rate > 0.35 or zero_ratio > 0.3 or disp_std > mean_pool_r_px * 0.15:
+            suggested_history_s = 1.5
+        elif partial_rate > 0.20 or zero_ratio > 0.15:
+            suggested_history_s = 2.5
         else:
-            suggested_history_s = 4.0  # default is fine
+            suggested_history_s = 4.0
         print(f"[autoconfig] zero_ratio={zero_ratio:.2f}  disp_std={disp_std:.1f}  "
               f"suggested mog2_history_s={suggested_history_s}", flush=True)
     else:
@@ -1539,10 +1717,13 @@ def run_autoconfig(cap, fps, total_frames, start_frame, end_frame, cfg, pool_mas
         print("[autoconfig] Not enough displacement data, keeping mog2_history_s=4.0", flush=True)
 
     return {
-        "mog2_threshold":  suggested_threshold,
-        "morph_open_k":    open_k,
-        "morph_close_k":   close_k,
-        "mog2_history_s":  suggested_history_s,
+        "mog2_threshold":     suggested_threshold,
+        "morph_open_k":       open_k,
+        "morph_close_k":      close_k,
+        "mog2_history_s":     suggested_history_s,
+        "median_blob_area":   median_blob_area,
+        "rat_body_radius_px": rat_body_radius_px,
+        "appearance_threshold": appearance_threshold,
     }
 
 
@@ -1581,12 +1762,18 @@ def main():
     parser.add_argument("--tracemapcolor",       default=None,   type=str)
     parser.add_argument("--appmode",             default=False,  action="store_true")
     parser.add_argument("--ratcolor",            default=None,   type=str)
-    parser.add_argument("--autoconfig",          default=False,  action="store_true",
-                        help="Auto-detect optimal mog2_threshold, morph kernels, and mog2_history_s from the video")
+    parser.add_argument("--colorall",            default=False,  action="store_true")
+    parser.add_argument("--autoconfig",          default=False,  action="store_true", help="Auto-detect optimal mog2_threshold, morph kernels, and mog2_history_s from the video")
     args = parser.parse_args()
 
     tracemap_color   = parse_tracemap_color(args.tracemapcolor)
-    rat_color        = parse_tracemap_color(args.ratcolor) if args.ratcolor else None
+    if args.ratcolor:
+        rat_color = parse_tracemap_color(args.ratcolor)
+    elif args.colorall:
+        rat_color = NAMED_COLORS["yellow"]
+    else:
+        rat_color = None
+    secondary_color = tuple(max(0, int(c * 0.55)) for c in rat_color) if args.colorall and rat_color is not None else None
     lang             = args.language
     require_platform = needs_platform(args)
 
@@ -1758,9 +1945,10 @@ def main():
         cfg["morph_open_k"]   = ac["morph_open_k"]
         cfg["morph_close_k"]  = ac["morph_close_k"]
         cfg["mog2_history"]   = max(1, int(round(ac["mog2_history_s"] * fps)))
-        # Store resolved history_s in cfg so build_rerun_command can emit it
         cfg["mog2_history_s"] = ac["mog2_history_s"]
-        # Reset cap to start_frame after autoconfig probing
+        cfg["median_blob_area"]     = ac["median_blob_area"]
+        cfg["rat_body_radius_px"]   = ac["rat_body_radius_px"]
+        cfg["appearance_threshold"] = ac["appearance_threshold"]
         cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
     has_platform = require_platform and platform_coords_valid(cfg)
@@ -1835,6 +2023,9 @@ def main():
     prev_inside_platform = False
     loop_start           = time.time()
     missed_candidates    = {}  # frame record-index -> raw candidate list, for retroactive correction
+    appearance_frames    = {}  # frame record-index -> raw frame, for appearance retroactive fill
+    miss_streak          = 0
+    APPEARANCE_TRIGGER   = 7  # consecutive MOG2 misses before appearance scan
 
     live_proximity_sum    = 0.0
     live_proximity_count  = 0
@@ -1855,6 +2046,31 @@ def main():
 
         if pos is None:
             missed_candidates[frame_idx] = raw_candidates
+            miss_streak += 1
+            appearance_frames[frame_idx] = frame.copy()
+            # Once streak hits threshold, run appearance detector on all missed frames
+            # so retroactive_jump_correction has candidates to walk back through.
+            if miss_streak == APPEARANCE_TRIGGER:
+                streak_start_idx = frame_idx - (miss_streak - 1)
+                for fi in range(streak_start_idx, frame_idx + 1):
+                    if fi in appearance_frames and not missed_candidates.get(fi):
+                        app_candidates = detect_rat_appearance(
+                            appearance_frames[fi], cfg, pool_mask, pool, prev_pos)
+                        if app_candidates:
+                            missed_candidates[fi] = app_candidates
+        else:
+            # On re-lock after a streak, run appearance on any remaining missed frames
+            # that still have no candidates (MOG2 or appearance).
+            if miss_streak >= APPEARANCE_TRIGGER:
+                streak_start_idx = frame_idx - miss_streak
+                for fi in range(streak_start_idx, frame_idx):
+                    if fi in appearance_frames and not missed_candidates.get(fi):
+                        app_candidates = detect_rat_appearance(
+                            appearance_frames[fi], cfg, pool_mask, pool, prev_pos)
+                        if app_candidates:
+                            missed_candidates[fi] = app_candidates
+            miss_streak = 0
+            appearance_frames.clear()
 
         if pos and prev_pos:
             seg_dist_cm = euclidean_cm(prev_pos, pos, scale_x, scale_y)
@@ -1930,8 +2146,15 @@ def main():
         })
 
         annotated = frame.copy()
-        if rat_contour is not None and rat_color is not None:
-            cv2.drawContours(annotated, [rat_contour], -1, rat_color, -1)
+        if rat_color is not None:
+            if rat_contour is not None:
+                draw_color = secondary_color if args.colorall else rat_color
+                cv2.drawContours(annotated, [rat_contour], -1, draw_color, -1)
+            if args.colorall:
+                for bx, by, area, cnt in raw_candidates:
+                    if cnt is rat_contour:
+                        continue
+                    cv2.drawContours(annotated, [cnt], -1, rat_color, 1)
         cv2.ellipse(annotated, (cx, cy), (rx, ry), angle, 0, 360, (255, 100, 0), thickness=2)
         cv2.line(annotated, north, south, (255, 100, 0), 1)
         cv2.line(annotated, west,  east,  (255, 100, 0), 1)

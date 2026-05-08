@@ -1,6 +1,7 @@
 ## Todo List
 
 - Support for multiple file formats, resolutions, FPS.
+- Short videos break the app
 
 - video preview feature. see how it looks before running the whole thing. Maybe pick the rat in a tool, then it auto adjusts some stuff.
 - Batch processing videos

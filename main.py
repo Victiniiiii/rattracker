@@ -108,10 +108,23 @@ def tracemap(records, first_frame, output_dir, video_path, ts, color=(0, 255, 25
             cv2.line(canvas, prev_point, point, color, 2, lineType=cv2.LINE_AA)
         prev_point = point
     cv2.imwrite(str(output_path), canvas)
+    return output_path
 
 def heatmap(records, first_frame, output_dir, video_path, ts, sigma=20):
     h, w = first_frame.shape[:2]
     heat = np.zeros((h, w), dtype=np.float32)
+    prev_time = None
+    fps_est = None
+    for r in records:
+        t = r.get("timestamp_s")
+        if t is not None and prev_time is not None and fps_est is None:
+            dt_sample = t - prev_time
+            if 0 < dt_sample < 1:
+                fps_est = dt_sample
+        if t is not None:
+            prev_time = t
+            break
+    frame_dt_est = fps_est if fps_est is not None else (1.0 / 4.0)
     prev_time = None
     for r in records:
         x = r.get("x")
@@ -125,7 +138,7 @@ def heatmap(records, first_frame, output_dir, video_path, ts, sigma=20):
         if prev_time is not None:
             dt = t - prev_time
             if dt < 0 or dt > 1:
-                dt = 0
+                dt = frame_dt_est
             if 0 <= x < w and 0 <= y < h:
                 heat[y, x] += dt
         prev_time = t
@@ -136,6 +149,7 @@ def heatmap(records, first_frame, output_dir, video_path, ts, sigma=20):
     overlay = cv2.addWeighted(first_frame, 0.6, heat_color, 0.4, 0)
     output_path = output_dir / f"{video_path.stem}_{ts}_heatmap.jpg"
     cv2.imwrite(str(output_path), overlay)
+    return output_path
 
 def emit_progress(frame_idx, processable_frames, loop_start, app_mode):
     if processable_frames <= 0:
@@ -225,7 +239,7 @@ def needs_platform(args) -> bool:
     return any([args.platformcross, args.paraplatform is not None,
                 args.proximity, args.latency])
 
-def run_calibration(frame: np.ndarray, require_platform: bool = False) -> dict | None:
+def run_calibration(frame: np.ndarray, require_platform: bool = False, para_scale: int = 4) -> dict | None:
     state = {
         "step": 0,
         "pool_points": {},
@@ -236,13 +250,6 @@ def run_calibration(frame: np.ndarray, require_platform: bool = False) -> dict |
     window = "Calibration"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(window, min(frame.shape[1], 1280), min(frame.shape[0], 720))
-
-    calib_cardinal_labels = {
-        "WEST":  'WEST',
-        "NORTH": 'NORTH',
-        "EAST":  'EAST',
-        "SOUTH": 'SOUTH',
-    }
 
     def draw(base):
         img = base.copy()
@@ -255,7 +262,6 @@ def run_calibration(frame: np.ndarray, require_platform: bool = False) -> dict |
             if step < len(CALIB_STEPS):
                 cardinal, _ = CALIB_STEPS[step]
                 color = CALIB_COLORS[cardinal]
-                label = calib_cardinal_labels[cardinal]
                 cv2.putText(img, f"Step {step}/4 -- Click on the {cardinal} point of the pool edge",
                             (tx, ty1), cv2.FONT_HERSHEY_DUPLEX, fs1, color, 1, cv2.LINE_AA)
                 cv2.putText(img, 'Press  R  to redo all points   |   ESC to abort',
@@ -287,7 +293,7 @@ def run_calibration(frame: np.ndarray, require_platform: bool = False) -> dict |
             col = CALIB_COLORS[cardinal]
             cv2.circle(img, pt, dot_r, col, -1)
             cv2.circle(img, pt, dot_ro, (255, 255, 255), 1)
-            cv2.putText(img, calib_cardinal_labels[cardinal],
+            cv2.putText(img, cardinal,
                         (pt[0] + lbl_off, pt[1] + sc(img, 5)), cv2.FONT_HERSHEY_DUPLEX, lbl_fs, col, 1, cv2.LINE_AA)
         if len(state["pool_points"]) == 4:
             p = state["pool_points"]
@@ -313,7 +319,7 @@ def run_calibration(frame: np.ndarray, require_platform: bool = False) -> dict |
             pts_np = np.array(corners_ordered, dtype=np.int32)
             cv2.polylines(img, [pts_np], isClosed=True, color=(200, 200, 50), thickness=2)
             if require_platform:
-                para_preview = scale_platform_corners(corners_ordered, math.sqrt(4))
+                para_preview = scale_platform_corners(corners_ordered, math.sqrt(para_scale))
                 para_pts_np = np.array([(int(p[0]), int(p[1])) for p in para_preview], dtype=np.int32)
                 cv2.polylines(img, [para_pts_np], isClosed=True, color=(0, 180, 255), thickness=1)
         return img
@@ -471,12 +477,6 @@ def confirm_pool_from_args(frame, cfg):
         "EAST":  cfg["pool_east"],
         "SOUTH": cfg["pool_south"],
     }
-    calib_cardinal_labels = {
-        "WEST":  'WEST',
-        "NORTH": 'NORTH',
-        "EAST":  'EAST',
-        "SOUTH": 'SOUTH',
-    }
     result = pool_ellipse_from_nsew(p["WEST"], p["NORTH"], p["EAST"], p["SOUTH"])
     if result is None:
         return False
@@ -491,7 +491,7 @@ def confirm_pool_from_args(frame, cfg):
         col = CALIB_COLORS[cardinal]
         cv2.circle(img, pt, sc(img, 7), col, -1)
         cv2.circle(img, pt, sc(img, 9), (255, 255, 255), 1)
-        cv2.putText(img, calib_cardinal_labels[cardinal],
+        cv2.putText(img, cardinal,
                     (pt[0] + sc(img, 12), pt[1] + sc(img, 5)), cv2.FONT_HERSHEY_DUPLEX, sc_f(img, 0.52), col, 1, cv2.LINE_AA)
     draw_transparent_banner(img, 0, 0, frame.shape[1], sc(img, 70))
     cv2.putText(img, 'Saved pool coordinates found -- confirm or repick',
@@ -550,8 +550,12 @@ def confirm_platform_from_args(frame, cfg):
 ## Pool Calculations
 
 def pool_ellipse_from_nsew(west, north, east, south):
-    cx = (west[0] + east[0] + north[0] + south[0]) / 4
-    cy = (west[1] + east[1] + north[1] + south[1]) / 4
+    center = line_intersection(west, east, north, south)
+    if center is not None:
+        cx, cy = center
+    else:
+        cx = (west[0] + east[0] + north[0] + south[0]) / 4
+        cy = (west[1] + east[1] + north[1] + south[1]) / 4
     r1x = east[0] - cx
     r1y = east[1] - cy
     r2x = north[0] - cx
@@ -977,8 +981,13 @@ def retroactive_jump_correction(records, missed_candidates, jump_threshold_px):
             anchor = (bx, by)
 
 def parse_point(s):
-    parts = s.split(",")
-    return (int(parts[0]), int(parts[1]))
+    try:
+        parts = s.split(",")
+        if len(parts) != 2:
+            raise ValueError
+        return (int(parts[0]), int(parts[1]))
+    except (ValueError, AttributeError):
+        raise argparse.ArgumentTypeError(f"Invalid point '{s}'. Expected format: x,y (e.g. 320,240)")
 
 def fmt_pt(pt):
     return f"{pt[0]},{pt[1]}"
@@ -1532,7 +1541,11 @@ def main():
         raise FileNotFoundError(f"Video not found: {video_path}")
 
     cap          = cv2.VideoCapture(str(video_path))
-    fps          = cap.get(cv2.CAP_PROP_FPS) or 4.0
+    _raw_fps = cap.get(cv2.CAP_PROP_FPS)
+    if not _raw_fps:
+        print("WARNING: Could not read FPS from video metadata; defaulting to 4.0. "
+              "Timestamps and distances will be wrong if this is incorrect.", flush=True)
+    fps          = _raw_fps or 4.0
     frame_h      = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     frame_w      = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -1607,7 +1620,7 @@ def main():
         if pool_coords_valid(cfg):
             confirmed = confirm_pool_from_args(first_frame, cfg)
             if not confirmed:
-                result = run_calibration(first_frame, require_platform=require_platform)
+                result = run_calibration(first_frame, require_platform=require_platform, para_scale=args.paraplatform if args.paraplatform is not None else 4)
                 if result is None:
                     raise RuntimeError("Pool calibration aborted.")
                 cfg.update(result)
@@ -1631,7 +1644,7 @@ def main():
                     cfg["platform_se"] = None
                     cfg["platform_sw"] = None
         else:
-            result = run_calibration(first_frame, require_platform=require_platform)
+            result = run_calibration(first_frame, require_platform=require_platform, para_scale=args.paraplatform if args.paraplatform is not None else 4)
             if result is None:
                 raise RuntimeError("Calibration aborted.")
             cfg.update(result)
@@ -1714,8 +1727,6 @@ def main():
     video_out     = output_dir / f"{video_path.stem}_{ts}.mp4"
     csv_path      = output_dir / f"{video_path.stem}_{ts}_coordinates.csv"
     summary_path  = output_dir / f"{video_path.stem}_{ts}_summary.txt"
-    tracemap_path = output_dir / f"{video_path.stem}_{ts}_tracemap.jpg"
-    heatmap_path  = output_dir / f"{video_path.stem}_{ts}_heatmap.jpg"
 
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(video_out), fourcc, fps, (frame_w, frame_h))
@@ -1808,8 +1819,6 @@ def main():
             if args.quadrantcross:
                 count_quadrant_exits(prev_pos, pos, west, north, east, south, q_exits)
         elif pos and prev_pos is None:
-            accumulate_static(q_stats, pos, west, north, east, south, frame_dt)
-        elif pos and prev_pos == pos:
             accumulate_static(q_stats, pos, west, north, east, south, frame_dt)
 
         if args.platformcross and has_platform and pos:
@@ -1981,11 +1990,6 @@ def main():
     cap.release()
     writer.release()
 
-    detected      = sum(1 for r in records if r["x"] is not None)
-
-    # Before interpolating, attempt to recover missed frames using saved candidate
-    # lists walked backwards from the re-lock position. jump_threshold_px is set to
-    # half the pool's mean pixel radius — a generous but physically plausible limit.
     jump_threshold_px = (rx + ry) / 2 * 0.5
     retroactive_jump_correction(records, missed_candidates, jump_threshold_px)
 
@@ -2168,8 +2172,8 @@ def main():
         f.write("\n".join(lines))
 
     heatmap_sigma = args.heatmap_sigma if args.heatmap_sigma > 0 else max(5, int(round(min(frame_w, frame_h) / 40)))
-    tracemap(records, first_frame, output_dir, video_path, ts, color=tracemap_color)
-    heatmap(records, first_frame, output_dir, video_path, ts, sigma=heatmap_sigma)
+    tracemap_path = tracemap(records, first_frame, output_dir, video_path, ts, color=tracemap_color)
+    heatmap_path  = heatmap(records, first_frame, output_dir, video_path, ts, sigma=heatmap_sigma)
 
     if not cfg["app_mode"]:
         print("\n" + "\n".join(lines))

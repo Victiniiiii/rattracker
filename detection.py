@@ -1,7 +1,121 @@
+import math
 import cv2
 import numpy as np
 
-from geometry import point_in_ellipse, euclidean_px
+from geometry import point_in_ellipse, euclidean_px, euclidean_cm
+
+SLOW_HISTORY_S = 15.0
+_SPEED_WINDOW  = 15
+
+
+def create_speed_adaptive_detector(cfg, fps, scale_x, scale_y, p15, p85):
+    slow_history = max(1, int(round(SLOW_HISTORY_S * fps)))
+    fast_sub = cv2.createBackgroundSubtractorMOG2(
+        history       = cfg["mog2_history"],
+        varThreshold  = cfg["mog2_threshold"],
+        detectShadows = cfg["mog2_detect_shadow"],
+    )
+    slow_sub = cv2.createBackgroundSubtractorMOG2(
+        history       = slow_history,
+        varThreshold  = cfg["mog2_threshold"],
+        detectShadows = cfg["mog2_detect_shadow"],
+    )
+    return {
+        "fast_sub":    fast_sub,
+        "slow_sub":    slow_sub,
+        "scale_x":     scale_x,
+        "scale_y":     scale_y,
+        "fps":         fps,
+        "p15":         p15,
+        "p85":         p85,
+        "speed_buf":   [],
+        "last_speed":  None,
+        "gap_frames":  0,
+    }
+
+
+def warmup_detector(detector, frame, learning_rate):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if len(frame.shape) == 3 else frame
+    detector["fast_sub"].apply(gray, learningRate=learning_rate)
+    detector["slow_sub"].apply(gray, learningRate=learning_rate)
+
+
+def _sigmoid_blend(speed, p15, p85):
+    if p85 <= p15:
+        return 0.5
+    mid   = (p15 + p85) / 2.0
+    scale = (p85 - p15) / 2.0
+    x     = (speed - mid) / (scale * 0.6)
+    return 1.0 / (1.0 + math.exp(-x))
+
+
+def _update_speed(detector, pos, prev_pos):
+    if pos is None or prev_pos is None:
+        detector["gap_frames"] += 1
+        decay = math.exp(-detector["gap_frames"] / detector["fps"])
+        if detector["last_speed"] is not None:
+            detector["last_speed"] *= decay
+        return
+
+    detector["gap_frames"] = 0
+    dist_cm = euclidean_cm(prev_pos, pos, detector["scale_x"], detector["scale_y"])
+    speed   = dist_cm * detector["fps"]
+
+    buf = detector["speed_buf"]
+    buf.append(speed)
+    if len(buf) > _SPEED_WINDOW:
+        buf.pop(0)
+    detector["last_speed"] = float(np.median(buf))
+
+
+def detect_rat_adaptive(frame, detector, cfg, pool_mask=None, pool=None, frame_idx=0, prev_pos=None):
+    fast_candidates = _extract_candidates(frame, detector["fast_sub"], cfg, pool_mask, pool, frame_idx)
+    slow_candidates = _extract_candidates(frame, detector["slow_sub"], cfg, pool_mask, pool, frame_idx)
+
+    current_speed = detector["last_speed"] if detector["last_speed"] is not None else detector["p85"]
+    w_fast = _sigmoid_blend(current_speed, detector["p15"], detector["p85"])
+
+    if w_fast >= 0.75 or not slow_candidates:
+        candidates = fast_candidates
+    elif w_fast <= 0.25 or not fast_candidates:
+        candidates = slow_candidates
+    else:
+        seen   = set()
+        merged = []
+        for c in fast_candidates + slow_candidates:
+            key = (c[0] // 4, c[1] // 4)
+            if key not in seen:
+                seen.add(key)
+                merged.append(c)
+        candidates = merged
+
+    if not candidates:
+        _update_speed(detector, None, prev_pos)
+        return None, None, []
+
+    if prev_pos is not None:
+        candidates.sort(key=lambda c: euclidean_px(prev_pos, (c[0], c[1])))
+    else:
+        candidates.sort(key=lambda c: c[2], reverse=True)
+
+    bx, by, area, winning_cnt = candidates[0]
+
+    median_blob_area   = cfg.get("median_blob_area")
+    rat_body_radius_px = cfg.get("rat_body_radius_px")
+    if (prev_pos is not None
+            and median_blob_area is not None
+            and rat_body_radius_px is not None
+            and area < median_blob_area * 0.50):
+        dist_to_prev = euclidean_px(prev_pos, (bx, by))
+        if dist_to_prev <= rat_body_radius_px * 2.0:
+            smallness = 1.0 - (area / (median_blob_area * 0.50))
+            alpha     = smallness * 0.6
+            bx = int(round(bx * (1 - alpha) + prev_pos[0] * alpha))
+            by = int(round(by * (1 - alpha) + prev_pos[1] * alpha))
+
+    pos = (bx, by)
+    _update_speed(detector, pos, prev_pos)
+    return pos, winning_cnt, candidates
 
 
 def _extract_candidates(frame, subtractor, cfg, pool_mask, pool, frame_idx):

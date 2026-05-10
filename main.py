@@ -12,7 +12,9 @@ from cli            import build_arg_parser, parse_point, parse_tracemap_color, 
 from geometry       import (pool_ellipse_from_nsew, make_ellipse_mask, euclidean_px,
                             euclidean_cm, point_in_platform, segment_crosses_platform_twice,
                             segment_enters_platform, scale_platform_corners, platform_center)
-from detection      import detect_rat, detect_rat_appearance, interpolate_missing, retroactive_jump_correction
+from detection      import (detect_rat, detect_rat_appearance, interpolate_missing,
+                            retroactive_jump_correction, create_speed_adaptive_detector,
+                            warmup_detector, detect_rat_adaptive)
 from calibration    import (pool_coords_valid, platform_coords_valid, needs_platform,
                             run_calibration, run_platform_calibration,
                             confirm_pool_from_args, confirm_platform_from_args,
@@ -215,6 +217,52 @@ def main():
         cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
     has_platform     = require_platform and platform_coords_valid(cfg)
+
+    PREPASS_SAMPLES = 80
+    prepass_interval = max(1, (end_frame - start_frame) // PREPASS_SAMPLES)
+    prepass_sub = cv2.createBackgroundSubtractorMOG2(
+        history       = cfg["mog2_history"],
+        varThreshold  = cfg["mog2_threshold"],
+        detectShadows = False,
+    )
+    warmup_begin = max(0, start_frame - cfg["mog2_history"])
+    cap.set(cv2.CAP_PROP_POS_FRAMES, warmup_begin)
+    for _ in range(start_frame - warmup_begin):
+        ret, wf = cap.read()
+        if not ret:
+            break
+        if len(wf.shape) == 3:
+            wf = cv2.cvtColor(wf, cv2.COLOR_BGR2GRAY)
+        prepass_sub.apply(wf, learningRate=cfg["mog2_learning_rate"])
+
+    prepass_speeds = []
+    prepass_prev   = None
+    for si in range(PREPASS_SAMPLES):
+        fi = start_frame + si * prepass_interval
+        if fi >= end_frame:
+            break
+        cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
+        ret, frm = cap.read()
+        if not ret:
+            continue
+        pp, _, _ = detect_rat(frm, prepass_sub, cfg, pool_mask, pool, fi, prepass_prev)
+        if pp is not None and prepass_prev is not None:
+            dist_cm = euclidean_cm(prepass_prev, pp, scale_x, scale_y)
+            real_dt = prepass_interval * frame_dt
+            if real_dt > 0:
+                prepass_speeds.append(dist_cm / real_dt)
+        if pp is not None:
+            prepass_prev = pp
+
+    if len(prepass_speeds) >= 4:
+        speed_p15 = float(np.percentile(prepass_speeds, 15))
+        speed_p85 = float(np.percentile(prepass_speeds, 85))
+    else:
+        speed_p15 = 1.0
+        speed_p85 = 8.0
+    print(f"[speed-adaptive] speed_p15={speed_p15:.2f} cm/s  speed_p85={speed_p85:.2f} cm/s", flush=True)
+    del prepass_sub
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
     platform_corners = None
     if has_platform:
         platform_corners = [cfg["platform_nw"], cfg["platform_ne"],
@@ -254,11 +302,7 @@ def main():
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(video_out), fourcc, fps, (frame_w, frame_h))
 
-    subtractor = cv2.createBackgroundSubtractorMOG2(
-        history       = cfg["mog2_history"],
-        varThreshold  = cfg["mog2_threshold"],
-        detectShadows = cfg["mog2_detect_shadow"],
-    )
+    detector = create_speed_adaptive_detector(cfg, fps, scale_x, scale_y, speed_p15, speed_p85)
 
     warmup_frames = min(cfg["mog2_history"], start_frame if start_frame > 0 else end_frame)
     warmup_start  = max(0, start_frame - warmup_frames)
@@ -267,9 +311,7 @@ def main():
         ret, wf = cap.read()
         if not ret:
             break
-        if len(wf.shape) == 3:
-            wf = cv2.cvtColor(wf, cv2.COLOR_BGR2GRAY)
-        subtractor.apply(wf, learningRate=cfg["mog2_learning_rate"])
+        warmup_detector(detector, wf, cfg["mog2_learning_rate"])
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
     records              = []
@@ -303,7 +345,7 @@ def main():
             break
 
         timestamp = (start_frame + frame_idx) / fps
-        pos, rat_contour, raw_candidates = detect_rat(frame, subtractor, cfg, pool_mask, pool, frame_idx, prev_pos)
+        pos, rat_contour, raw_candidates = detect_rat_adaptive(frame, detector, cfg, pool_mask, pool, frame_idx, prev_pos)
 
         if pos is None:
             missed_candidates[frame_idx] = raw_candidates

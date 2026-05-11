@@ -68,9 +68,57 @@ def _update_speed(detector, pos, prev_pos):
     detector["last_speed"] = float(np.median(buf))
 
 
-def detect_rat_adaptive(frame, detector, cfg, pool_mask=None, pool=None, frame_idx=0, prev_pos=None):
-    fast_candidates = _extract_candidates(frame, detector["fast_sub"], cfg, pool_mask, pool, frame_idx)
-    slow_candidates = _extract_candidates(frame, detector["slow_sub"], cfg, pool_mask, pool, frame_idx)
+def compute_temporal_bg(frame_buffer):
+    if not frame_buffer:
+        return None
+    return np.median(np.stack(frame_buffer, axis=0), axis=0).astype(np.uint8)
+
+
+def detect_temporal(frame, temporal_bg, cfg, pool_mask, pool):
+    if temporal_bg is None:
+        return []
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if len(frame.shape) == 3 else frame.copy()
+    diff = cv2.absdiff(gray, temporal_bg)
+    if pool_mask is not None:
+        diff = cv2.bitwise_and(diff, diff, mask=pool_mask)
+    masked_vals = diff[pool_mask > 0] if pool_mask is not None else diff.ravel()
+    if masked_vals.size == 0:
+        return []
+    thresh = float(np.std(masked_vals)) * 1.5
+    thresh = max(thresh, 8.0)
+    _, binary = cv2.threshold(diff, thresh, 255, cv2.THRESH_BINARY)
+    k_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (cfg["morph_open_k"],  cfg["morph_open_k"]))
+    k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (cfg["morph_close_k"], cfg["morph_close_k"]))
+    binary  = cv2.morphologyEx(binary, cv2.MORPH_OPEN,  k_open)
+    binary  = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, k_close)
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    candidates = []
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area < cfg["min_contour_area"] or area > cfg["max_contour_area"]:
+            continue
+        M = cv2.moments(cnt)
+        if M["m00"] == 0:
+            continue
+        bx = int(M["m10"] / M["m00"])
+        by = int(M["m01"] / M["m00"])
+        if pool is not None and not point_in_ellipse(bx, by, *pool):
+            continue
+        candidates.append((bx, by, area, cnt))
+    return candidates
+
+
+def _temporal_confirms(cx, cy, temporal_candidates, radius):
+    for tx, ty, _, _ in temporal_candidates:
+        if euclidean_px((cx, cy), (tx, ty)) <= radius:
+            return True
+    return False
+
+
+def detect_rat_adaptive(frame, detector, cfg, pool_mask=None, pool=None, frame_idx=0, prev_pos=None, temporal_bg=None):
+    fast_candidates     = _extract_candidates(frame, detector["fast_sub"], cfg, pool_mask, pool, frame_idx)
+    slow_candidates     = _extract_candidates(frame, detector["slow_sub"], cfg, pool_mask, pool, frame_idx)
+    temporal_candidates = detect_temporal(frame, temporal_bg, cfg, pool_mask, pool)
 
     current_speed = detector["last_speed"] if detector["last_speed"] is not None else detector["p85"]
     w_fast = _sigmoid_blend(current_speed, detector["p15"], detector["p85"])
@@ -91,12 +139,21 @@ def detect_rat_adaptive(frame, detector, cfg, pool_mask=None, pool=None, frame_i
 
     if not candidates:
         _update_speed(detector, None, prev_pos)
-        return None, None, []
+        return None, None, fast_candidates, slow_candidates, temporal_candidates
+
+    confirm_radius = cfg.get("rat_body_radius_px") or math.sqrt(cfg.get("min_contour_area", 300) / math.pi)
 
     if prev_pos is not None:
-        candidates.sort(key=lambda c: euclidean_px(prev_pos, (c[0], c[1])))
+        def sort_key(c):
+            dist  = euclidean_px(prev_pos, (c[0], c[1]))
+            bonus = -confirm_radius if _temporal_confirms(c[0], c[1], temporal_candidates, confirm_radius) else 0
+            return dist + bonus
+        candidates.sort(key=sort_key)
     else:
-        candidates.sort(key=lambda c: c[2], reverse=True)
+        def sort_key_area(c):
+            bonus = confirm_radius if _temporal_confirms(c[0], c[1], temporal_candidates, confirm_radius) else 0
+            return c[2] + bonus
+        candidates.sort(key=sort_key_area, reverse=True)
 
     bx, by, area, winning_cnt = candidates[0]
 
@@ -115,7 +172,7 @@ def detect_rat_adaptive(frame, detector, cfg, pool_mask=None, pool=None, frame_i
 
     pos = (bx, by)
     _update_speed(detector, pos, prev_pos)
-    return pos, winning_cnt, candidates
+    return pos, winning_cnt, fast_candidates, slow_candidates, temporal_candidates
 
 
 def _extract_candidates(frame, subtractor, cfg, pool_mask, pool, frame_idx):

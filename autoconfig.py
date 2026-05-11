@@ -190,11 +190,13 @@ def run_autoconfig(cap, fps, total_frames, start_frame, end_frame, cfg, pool_mas
     SWEEP_FRAMES   = 120
     sweep_interval = max(1, (end_frame - start_frame) // SWEEP_FRAMES)
 
+    pool_area_px = math.pi * ((rx + ry) / 2) ** 2
     sweep_cfg = dict(cfg)
     sweep_cfg["mog2_threshold"] = suggested_threshold
     sweep_cfg["morph_open_k"]   = cfg["morph_open_k"]
     sweep_cfg["morph_close_k"]  = cfg["morph_close_k"]
     sweep_cfg["debug_frames"]   = 0
+    sweep_cfg["max_contour_area"] = pool_area_px * 0.04
 
     sweep_sub = cv2.createBackgroundSubtractorMOG2(
         history       = cfg["mog2_history"],

@@ -1,3 +1,4 @@
+import collections
 import csv
 import json
 import math
@@ -14,7 +15,8 @@ from geometry       import (pool_ellipse_from_nsew, make_ellipse_mask, euclidean
                             segment_enters_platform, scale_platform_corners, platform_center)
 from detection      import (detect_rat, detect_rat_appearance, interpolate_missing,
                             retroactive_jump_correction, create_speed_adaptive_detector,
-                            warmup_detector, detect_rat_adaptive)
+                            warmup_detector, detect_rat_adaptive,
+                            compute_temporal_bg, detect_temporal)
 from calibration    import (pool_coords_valid, platform_coords_valid, needs_platform,
                             run_calibration, run_platform_calibration,
                             confirm_pool_from_args, confirm_platform_from_args,
@@ -37,7 +39,6 @@ def main():
         rat_color = NAMED_COLORS["yellow"]
     else:
         rat_color = None
-    secondary_color  = tuple(max(0, int(c * 0.60)) for c in rat_color) if args.colorall and rat_color is not None else None
     require_platform = needs_platform(args)
 
     cfg = {
@@ -80,7 +81,6 @@ def main():
 
     _ref_w, _ref_h = 1280, 720
     _lin_scale  = min(frame_w, frame_h) / min(_ref_w, _ref_h)
-    _area_scale = (frame_w * frame_h) / (_ref_w * _ref_h)
 
     cfg["mog2_history"] = max(1, int(round(args.mog2_history_s * fps)))
     cfg["trail_len"]    = max(1, int(round(args.trail_s * fps)))
@@ -89,10 +89,6 @@ def main():
         cfg["morph_open_k"]  = max(3, int(round(args.morph_open_k  * _lin_scale)) | 1)
     if args.morph_close_k == 15:
         cfg["morph_close_k"] = max(3, int(round(args.morph_close_k * _lin_scale)) | 1)
-    if args.min_contour_area == 300:
-        cfg["min_contour_area"] = args.min_contour_area * _area_scale
-    if args.max_contour_area == 12000:
-        cfg["max_contour_area"] = args.max_contour_area * _area_scale
 
     start_frame = int(args.start * fps) if args.start is not None else 0
     end_frame   = int(args.end   * fps) if args.end   is not None else total_frames
@@ -201,6 +197,12 @@ def main():
     scale_x = r_cm / raw_rx_px
     scale_y = r_cm / raw_ry_px
 
+    pool_area_px = math.pi * raw_rx_px * raw_ry_px
+    if args.min_contour_area == 300:
+        cfg["min_contour_area"] = pool_area_px * 0.005
+    if args.max_contour_area == 12000:
+        cfg["max_contour_area"] = pool_area_px * 0.08
+
     pool      = (cx, cy, rx, ry, angle)
     pool_mask = make_ellipse_mask((frame_h, frame_w), *pool)
 
@@ -214,6 +216,8 @@ def main():
         cfg["median_blob_area"]     = ac["median_blob_area"]
         cfg["rat_body_radius_px"]   = ac["rat_body_radius_px"]
         cfg["appearance_threshold"] = ac["appearance_threshold"]
+        if args.max_contour_area == 12000:
+            cfg["max_contour_area"] = ac["median_blob_area"] * 2.5
         cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
     has_platform     = require_platform and platform_coords_valid(cfg)
@@ -333,6 +337,9 @@ def main():
     live_proximity_sum   = 0.0
     live_proximity_count = 0
 
+    temporal_buf_len = max(1, int(round(fps * 3)))
+    frame_buffer     = collections.deque(maxlen=temporal_buf_len)
+
     processable_frames = end_frame - start_frame
 
     while True:
@@ -344,8 +351,15 @@ def main():
         if not ret:
             break
 
+        gray_for_buf = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if len(frame.shape) == 3 else frame.copy()
+        frame_buffer.append(gray_for_buf)
+        temporal_bg = compute_temporal_bg(frame_buffer) if len(frame_buffer) >= temporal_buf_len // 2 else None
+
         timestamp = (start_frame + frame_idx) / fps
-        pos, rat_contour, raw_candidates = detect_rat_adaptive(frame, detector, cfg, pool_mask, pool, frame_idx, prev_pos)
+        pos, rat_contour, fast_candidates, slow_candidates, temporal_candidates = detect_rat_adaptive(
+            frame, detector, cfg, pool_mask, pool, frame_idx, prev_pos, temporal_bg)
+
+        raw_candidates = fast_candidates
 
         if pos is None:
             missed_candidates[frame_idx] = raw_candidates
@@ -443,15 +457,21 @@ def main():
         })
 
         annotated = frame.copy()
-        if rat_color is not None:
-            if rat_contour is not None:
-                draw_color = secondary_color if args.colorall else rat_color
-                cv2.drawContours(annotated, [rat_contour], -1, draw_color, -1)
-            if args.colorall:
-                for bx, by, area, cnt in raw_candidates:
-                    if cnt is rat_contour:
-                        continue
-                    cv2.drawContours(annotated, [cnt], -1, secondary_color, -1)
+        if args.colorall:
+            for _, _, _, cnt in fast_candidates:
+                layer = annotated.copy()
+                cv2.drawContours(layer, [cnt], -1, (0, 255, 0), -1)
+                cv2.addWeighted(layer, 0.5, annotated, 0.5, 0, annotated)
+            for _, _, _, cnt in slow_candidates:
+                layer = annotated.copy()
+                cv2.drawContours(layer, [cnt], -1, (255, 0, 0), -1)
+                cv2.addWeighted(layer, 0.5, annotated, 0.5, 0, annotated)
+            for _, _, _, cnt in temporal_candidates:
+                layer = annotated.copy()
+                cv2.drawContours(layer, [cnt], -1, (0, 0, 255), -1)
+                cv2.addWeighted(layer, 0.5, annotated, 0.5, 0, annotated)
+        elif rat_color is not None and rat_contour is not None:
+            cv2.drawContours(annotated, [rat_contour], -1, rat_color, -1)
         cv2.ellipse(annotated, (cx, cy), (rx, ry), angle, 0, 360, (255, 100, 0), thickness=2)
         cv2.line(annotated, north, south, (255, 100, 0), 1)
         cv2.line(annotated, west,  east,  (255, 100, 0), 1)

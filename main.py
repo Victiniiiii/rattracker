@@ -330,9 +330,7 @@ def main():
     prev_inside_platform = False
     loop_start           = time.time()
     missed_candidates    = {}
-    appearance_frames    = {}
     miss_streak          = 0
-    APPEARANCE_TRIGGER   = 7
 
     live_proximity_sum   = 0.0
     live_proximity_count = 0
@@ -362,28 +360,20 @@ def main():
         raw_candidates = fast_candidates
 
         if pos is None:
-            missed_candidates[frame_idx] = raw_candidates
+            all_missed = []
+            seen = set()
+            for c in fast_candidates + slow_candidates + temporal_candidates:
+                key = (c[0] // 4, c[1] // 4)
+                if key not in seen:
+                    seen.add(key)
+                    all_missed.append(c)
+            missed_candidates[frame_idx] = all_missed
             miss_streak += 1
-            appearance_frames[frame_idx] = frame.copy()
-            if miss_streak == APPEARANCE_TRIGGER:
-                streak_start_idx = frame_idx - (miss_streak - 1)
-                for fi in range(streak_start_idx, frame_idx + 1):
-                    if fi in appearance_frames and not missed_candidates.get(fi):
-                        app_candidates = detect_rat_appearance(
-                            appearance_frames[fi], cfg, pool_mask, pool, prev_pos)
-                        if app_candidates:
-                            missed_candidates[fi] = app_candidates
+            app_candidates = detect_rat_appearance(frame, cfg, pool_mask, pool, prev_pos)
+            if app_candidates and not missed_candidates[frame_idx]:
+                missed_candidates[frame_idx] = app_candidates
         else:
-            if miss_streak >= APPEARANCE_TRIGGER:
-                streak_start_idx = frame_idx - miss_streak
-                for fi in range(streak_start_idx, frame_idx):
-                    if fi in appearance_frames and not missed_candidates.get(fi):
-                        app_candidates = detect_rat_appearance(
-                            appearance_frames[fi], cfg, pool_mask, pool, prev_pos)
-                        if app_candidates:
-                            missed_candidates[fi] = app_candidates
             miss_streak = 0
-            appearance_frames.clear()
 
         if pos and prev_pos:
             seg_dist_cm = euclidean_cm(prev_pos, pos, scale_x, scale_y)

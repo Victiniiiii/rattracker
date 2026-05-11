@@ -137,6 +137,24 @@ def detect_rat_adaptive(frame, detector, cfg, pool_mask=None, pool=None, frame_i
                 merged.append(c)
         candidates = merged
 
+    if not candidates and prev_pos is not None:
+        dive_cfg = dict(cfg)
+        dive_cfg["min_contour_area"] = cfg["min_contour_area"] * 0.2
+        fast_dive = _extract_candidates(frame, detector["fast_sub"], dive_cfg, pool_mask, pool, frame_idx)
+        slow_dive = _extract_candidates(frame, detector["slow_sub"], dive_cfg, pool_mask, pool, frame_idx)
+        temp_dive = detect_temporal(frame, temporal_bg, dive_cfg, pool_mask, pool)
+        seen   = set()
+        merged = []
+        for c in fast_dive + slow_dive + temp_dive:
+            key = (c[0] // 4, c[1] // 4)
+            if key not in seen:
+                seen.add(key)
+                merged.append(c)
+        fast_candidates     = fast_dive
+        slow_candidates     = slow_dive
+        temporal_candidates = temp_dive
+        candidates          = merged
+
     if not candidates:
         _update_speed(detector, None, prev_pos)
         return None, None, fast_candidates, slow_candidates, temporal_candidates
@@ -164,7 +182,7 @@ def detect_rat_adaptive(frame, detector, cfg, pool_mask=None, pool=None, frame_i
             and rat_body_radius_px is not None
             and area < median_blob_area * 0.50):
         dist_to_prev = euclidean_px(prev_pos, (bx, by))
-        if dist_to_prev <= rat_body_radius_px * 2.0:
+        if dist_to_prev <= rat_body_radius_px * 5.0:
             smallness = 1.0 - (area / (median_blob_area * 0.50))
             alpha     = smallness * 0.6
             bx = int(round(bx * (1 - alpha) + prev_pos[0] * alpha))

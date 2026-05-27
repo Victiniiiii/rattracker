@@ -57,6 +57,7 @@ const DEFAULTS = {
 	heatmap_sigma: 0,
 	language: "en",
 	autoconfig: false,
+	colorall: false,
 };
 
 const I18N = {
@@ -120,6 +121,8 @@ const I18N = {
 		heatmap_sigma_desc: "Gaussian blur radius for the heatmap output. 0 = auto-calculated from video resolution (recommended). Increase for softer blobs, decrease for sharper.",
 		autoconfig: "Auto-Configure Detection",
 		autoconfig_desc: "Automatically tune MOG2 threshold, morph kernels, and history duration by analysing the video before tracking. Results are written back into settings after the run.",
+		colorall: "Highlight All Detections",
+		colorall_desc: "Draws all candidate blobs on the output video: green = fast subtractor, blue = slow subtractor, red = temporal. Useful for debugging detection quality.",
 		save: "Save",
 		cancel: "Cancel",
 		select_video: "Select Video",
@@ -194,6 +197,8 @@ const I18N = {
 		heatmap_sigma_desc: "Rayon du flou gaussien pour la carte de chaleur. 0 = calculé automatiquement selon la résolution (recommandé).",
 		autoconfig: "Auto-Configuration de la Détection",
 		autoconfig_desc: "Règle automatiquement le seuil MOG2, les noyaux morphologiques et la durée d'historique en analysant la vidéo avant le suivi. Les résultats sont écrits dans les paramètres après l'exécution.",
+		colorall: "Afficher toutes les détections",
+		colorall_desc: "Dessine tous les blobs candidats sur la vidéo : vert = soustraction rapide, bleu = soustraction lente, rouge = temporel. Utile pour déboguer la détection.",
 		save: "Enregistrer",
 		cancel: "Annuler",
 		select_video: "Choisir une vidéo",
@@ -268,6 +273,8 @@ const I18N = {
 		heatmap_sigma_desc: "Isı haritası için Gauss bulanıklığı yarıçapı. 0 = çözünürlüğe göre otomatik hesaplanır (önerilen).",
 		autoconfig: "Algılamayı Otomatik Yapılandır",
 		autoconfig_desc: "Takipten önce videoyu analiz ederek MOG2 eşiğini, morfoloji çekirdeklerini ve geçmiş süresini otomatik olarak ayarlar. Sonuçlar çalıştırma sonrası ayarlara yazılır.",
+		colorall: "Tüm Tespitleri Göster",
+		colorall_desc: "Çıktı videosunda tüm aday blobları çizer: yeşil = hızlı çıkarma, mavi = yavaş çıkarma, kırmızı = zamansal. Tespit kalitesini ayıklamak için kullanışlıdır.",
 		save: "Kaydet",
 		cancel: "İptal",
 		select_video: "Video Seç",
@@ -366,6 +373,7 @@ function cfgToShareString(c, profileName = "") {
 	if (c.mog2_learning_rate != null && c.mog2_learning_rate != -1.0) parts.push(`--mog2_learning_rate ${c.mog2_learning_rate}`);
 	if (c.max_interp_gap != null && c.max_interp_gap != 0) parts.push(`--max_interp_gap ${c.max_interp_gap}`);
 	if (c.heatmap_sigma != null && c.heatmap_sigma != 0) parts.push(`--heatmap_sigma ${c.heatmap_sigma}`);
+	if (c.colorall) parts.push("--colorall");
 	return parts.join(" ");
 }
 
@@ -501,6 +509,14 @@ function shareStringToCfg(str) {
 			case "--heatmap_sigma":
 				result.heatmap_sigma = parseFloat(next);
 				i += 2;
+				break;
+			case "--colorall":
+				result.colorall = true;
+				i += 1;
+				break;
+			case "--autoconfig":
+				result.autoconfig = true;
+				i += 1;
 				break;
 			default:
 				i += 1;
@@ -759,6 +775,7 @@ function buildArgs(filePath, currentCfg) {
 	if (currentCfg.max_interp_gap != null && currentCfg.max_interp_gap != 0) args.push("--max_interp_gap", String(currentCfg.max_interp_gap));
 	if (currentCfg.heatmap_sigma != null && currentCfg.heatmap_sigma != 0) args.push("--heatmap_sigma", String(currentCfg.heatmap_sigma));
 	if (currentCfg.autoconfig) args.push("--autoconfig");
+	if (currentCfg.colorall) args.push("--colorall");
 	args.push("--appmode");
 	return args;
 }
@@ -1303,8 +1320,9 @@ async function runScript() {
 			// Non-JSON stdout — surface autoconfig progress lines to the user
 			const trimmed = line.trim();
 			if (trimmed.startsWith("[autoconfig]")) {
-				// Strip the prefix tag and show the rest in the progress text area
 				document.getElementById("progressText").textContent = trimmed.replace("[autoconfig]", "🔍").trim();
+			} else if (trimmed.startsWith("[speed-adaptive]")) {
+				document.getElementById("progressText").textContent = trimmed.replace("[speed-adaptive]", "⚡").trim();
 			}
 			return;
 		}
@@ -1342,6 +1360,10 @@ async function runScript() {
 			if (parsed.ac_morph_open_k != null) cfg.morph_open_k = parsed.ac_morph_open_k;
 			if (parsed.ac_morph_close_k != null) cfg.morph_close_k = parsed.ac_morph_close_k;
 			if (parsed.ac_mog2_history_s != null) cfg.mog2_history_s = parsed.ac_mog2_history_s;
+
+			if (parsed.para_latency_time_s != null) console.log("Para latency time:", parsed.para_latency_time_s, "s");
+			if (parsed.para_latency_dist_cm != null) console.log("Para latency dist:", parsed.para_latency_dist_cm, "cm");
+			if (parsed.quadrant_exits != null) console.log("Quadrant exits:", parsed.quadrant_exits);
 
 			// Autoconfig is a one-shot action — uncheck it so the next run uses
 			// the baked-in resolved values without re-running the probe.

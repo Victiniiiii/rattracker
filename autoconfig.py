@@ -330,16 +330,16 @@ def run_autoconfig(cap, fps, total_frames, start_frame, end_frame, cfg, pool_mas
         disp_std   = float(np.std(displacements))
 
         if partial_rate > 0.35 or zero_ratio > 0.3 or disp_std > mean_pool_r_px * 0.15:
-            suggested_history_s = 1.5
+            suggested_history_s = 1.0
         elif partial_rate > 0.20 or zero_ratio > 0.15:
-            suggested_history_s = 2.5
+            suggested_history_s = 2.0
         else:
-            suggested_history_s = 4.0
+            suggested_history_s = 3.0
         print(f"[autoconfig] zero_ratio={zero_ratio:.2f}  disp_std={disp_std:.1f}  "
               f"suggested mog2_history_s={suggested_history_s}", flush=True)
     else:
-        suggested_history_s = 4.0
-        print("[autoconfig] Not enough displacement data, keeping mog2_history_s=4.0", flush=True)
+        suggested_history_s = 3.0
+        print("[autoconfig] Not enough displacement data, keeping mog2_history_s=3.0", flush=True)
 
     return {
         "mog2_threshold":       suggested_threshold,

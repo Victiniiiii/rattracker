@@ -1,11 +1,33 @@
-# App Specific
-/output/
+# App data and local output
 /input/
-config.json
+/output/
+/config.json
+
+# Build artifacts
+/dist/
 
 # Python
 /venv/
-/__pycache__
+__pycache__/
+*.py[cod]
+
+# Nuitka build output
+/main.build/
+/main.dist/
+/main.onefile-build/
+/main
+/main.bin
+/main.exe
+
+# Node / Tauri
+/node_modules/
+/app/node_modules/
+/app/src-tauri/bin/
+/app/src-tauri/target/
+/app/src-tauri/gen/schemas/
+dist
+dist-ssr
+*.local
 
 # Logs
 logs
@@ -15,11 +37,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
 
 # Editor directories and files
 .vscode/*
@@ -31,12 +48,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Nuitka
-main.build/
-main.dist/
-main.onefile-build/
-main.exe
-main
-main.bin
-src-tauri/bin/

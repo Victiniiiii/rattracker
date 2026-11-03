@@ -335,11 +335,39 @@ def confirm_platform_from_args(frame, cfg):
     return confirmed
 
 
-def appmode_calib(require_platform: bool, existing_pool: dict = None) -> dict | None:
+def write_preview(frame) -> dict | None:
+    """Write a JPEG preview frame for GUI calibration.
+
+    The desktop UI cannot decode video reliably on every platform, so the
+    backend hands it a single image instead. The backend deletes the file after
+    the calibration exchange finishes, so both confirm dialogs can reuse it.
+    """
+    import os
+    import tempfile
+
+    try:
+        fd, path = tempfile.mkstemp(prefix="rattracker_preview_", suffix=".jpg")
+        os.close(fd)
+        ok = cv2.imwrite(path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+        if not ok:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+            return None
+        return {"path": path, "w": int(frame.shape[1]), "h": int(frame.shape[0])}
+    except Exception:
+        return None
+
+
+def appmode_calib(require_platform: bool, existing_pool: dict = None,
+                  preview: dict | None = None) -> dict | None:
     msg = {
         "needs_calib":      True,
         "require_platform": require_platform,
     }
+    if preview:
+        msg["preview"] = preview
     if existing_pool:
         msg["existing_pool"] = {
             "pool_west":  list(existing_pool["pool_west"]),
@@ -362,7 +390,8 @@ def appmode_calib(require_platform: bool, existing_pool: dict = None) -> dict | 
     return data
 
 
-def appmode_confirm(cfg: dict, confirm_type: str) -> bool:
+def appmode_confirm(cfg: dict, confirm_type: str,
+                    preview: dict | None = None) -> bool:
     if confirm_type == "pool":
         points = {
             "pool_west":  list(cfg["pool_west"]),
@@ -382,6 +411,8 @@ def appmode_confirm(cfg: dict, confirm_type: str) -> bool:
         "confirm_type":  confirm_type,
         "points":        points,
     }
+    if preview:
+        msg["preview"] = preview
     print(json.dumps(msg), flush=True)
     line = sys.stdin.readline()
     if not line:

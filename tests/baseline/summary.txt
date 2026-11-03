@@ -1,0 +1,65 @@
+Video           : 1.mp4
+Resolution      : 960x576
+Total frames    : 243
+FPS             : 4.00
+Duration (s)    : 60.75
+Start time (s)  : 0
+End time (s)    : 60.75
+
+-- Pool Calibration Points --
+Pool West       : (274, 128)
+Pool North      : (665, 92)
+Pool East       : (730, 382)
+Pool South      : (349, 443)
+
+-- Platform Calibration Points --
+Platform NW     : (328, 16)
+Platform NE     : (744, 30)
+Platform SE     : (754, 473)
+Platform SW     : (318, 480)
+Platform exits  : 0
+
+Detected frames : 242
+Interpolated    : 0
+Missing (no pos): 1
+
+Pool radius     : 60.0 cm
+Scale X         : 0.2299 cm/px  (horizontal)
+Scale Y         : 0.2541 cm/px  (vertical)
+
+Total distance  : 5166.19 px
+Total distance  : 1238.42 cm
+  (over 241 consecutive frame pairs)
+
+-- Quadrant Analysis (sorted by time spent) --
+Quadrant     Time (s)   Time (%)    Dist (cm)   Dist (%)    Exits
+------------------------------------------------------------------
+SW              29.09      48.1%      575.00      46.4%        8
+SE              15.58      25.8%      345.92      27.9%        6
+NW              10.85      17.9%      201.74      16.3%        6
+NE               4.97       8.2%      115.77       9.3%        5
+------------------------------------------------------------------
+TOTAL           60.50     100.0%     1238.42     100.0%       25
+
+-- Quadrant Exits --
+NE exits       : 5
+NW exits       : 6
+SW exits       : 8
+SE exits       : 6
+
+-- ParaPlatform Analysis (scale: 4x area / 2.00x side) --
+ParaPlatform time  : 60.50 s  (100.0% of total)
+ParaPlatform dist  : 1238.42 cm (100.0% of total)
+ParaPlatform exits : 0
+
+-- Proximity to Platform --
+Avg dist to center : 33.45 cm  (over 242 frames)
+
+-- Latency to Platform --
+Rat never entered platform during session
+
+-- Latency to ParaPlatform --
+Rat never entered paraplatform during session
+
+-- Re-run Command --
+python main.py --morph_close_k 13 --quadrantcross --platformcross --paraplatform 4 --proximity --latency --pool_west 274,128 --pool_north 665,92 --pool_east 730,382 --pool_south 349,443 --platform_nw 328,16 --platform_ne 744,30 --platform_se 754,473 --platform_sw 318,480 --appmode --video input/1.mp4

@@ -20,7 +20,7 @@ from .detection      import (detect_rat, detect_rat_appearance, interpolate_miss
 from .calibration    import (pool_coords_valid, platform_coords_valid, needs_platform,
                             run_calibration, run_platform_calibration,
                             confirm_pool_from_args, confirm_platform_from_args,
-                            appmode_calib, appmode_confirm)
+                            appmode_calib, appmode_confirm, write_preview)
 from .quadrant_stats import (empty_quadrant_stats, empty_quadrant_exits,
                             accumulate_segment, accumulate_static, count_quadrant_exits)
 from .drawing        import sc, sc_f, draw_transparent_banner, draw_leaderboard
@@ -95,25 +95,34 @@ def main():
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
+    preview = None
+    if args.appmode:
+        _ok, _preview_frame = cap.read()
+        if _ok:
+            preview = write_preview(_preview_frame)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
     if args.appmode:
         if pool_coords_valid(cfg):
-            pool_confirmed = appmode_confirm(cfg, "pool")
+            pool_confirmed = appmode_confirm(cfg, "pool", preview=preview)
             if not pool_confirmed:
-                result = appmode_calib(require_platform)
+                result = appmode_calib(require_platform, preview=preview)
                 if result is None:
                     raise RuntimeError("Calibration aborted.")
                 cfg.update(result)
             else:
                 if require_platform:
                     if platform_coords_valid(cfg):
-                        plat_confirmed = appmode_confirm(cfg, "platform")
+                        plat_confirmed = appmode_confirm(cfg, "platform", preview=preview)
                         if not plat_confirmed:
-                            result = appmode_calib(require_platform=True, existing_pool=cfg)
+                            result = appmode_calib(require_platform=True, existing_pool=cfg,
+                                                   preview=preview)
                             if result is None:
                                 raise RuntimeError("Platform calibration aborted.")
                             cfg.update(result)
                     else:
-                        result = appmode_calib(require_platform=True, existing_pool=cfg)
+                        result = appmode_calib(require_platform=True, existing_pool=cfg,
+                                               preview=preview)
                         if result is None:
                             raise RuntimeError("Platform calibration aborted.")
                         cfg.update(result)
@@ -123,7 +132,7 @@ def main():
                     cfg["platform_se"] = None
                     cfg["platform_sw"] = None
         else:
-            result = appmode_calib(require_platform)
+            result = appmode_calib(require_platform, preview=preview)
             if result is None:
                 raise RuntimeError("Calibration aborted.")
             cfg.update(result)
@@ -132,6 +141,12 @@ def main():
                 cfg["platform_ne"] = None
                 cfg["platform_se"] = None
                 cfg["platform_sw"] = None
+
+        if preview:
+            try:
+                Path(preview["path"]).unlink(missing_ok=True)
+            except OSError:
+                pass
 
         ret, first_frame = cap.read()
         if not ret:

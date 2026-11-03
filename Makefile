@@ -7,11 +7,15 @@ SHELL := bash
 VENV        ?= venv
 VIDEO       ?= input/1.mp4
 ARGS        ?=
+VERSION     ?= 1.1.0
 
-ENTRY       := main.py
-PY_SOURCES  := $(ENTRY) $(wildcard tracker/*.py) requirements.txt
-APP_DIR     := app
+ENTRY       := app_qt.py
+CLI_ENTRY   := main.py
+PY_SOURCES  := $(ENTRY) $(CLI_ENTRY) $(wildcard ui/*.py) $(wildcard tracker/*.py) requirements.txt
+DATA        := appicon.png packaging/windows/appicon.ico packaging/macos/appicon.icns $(wildcard ui/assets/*)
+BUILD_DIR   := build
 DIST_DIR    ?= dist
+APP_NAME    := rattracker
 NUITKA_ARGS ?=
 
 UNAME_S := $(shell uname -s 2>/dev/null || echo unknown)
@@ -32,94 +36,71 @@ else
 endif
 
 ifeq ($(OS),windows)
-  PYTHON       ?= py -3.12
-  VENV_PY      := $(VENV)/Scripts/python.exe
-  PIP          := $(VENV)/Scripts/pip.exe
-  TARGET_TRIPLE := x86_64-pc-windows-msvc
-  PLATFORM_FLAGS :=
-  EXE          := .exe
+  PYTHON     ?= py -3.12
+  VENV_PY    := $(VENV)/Scripts/python.exe
+  PIP        := $(VENV)/Scripts/pip.exe
+  EXE        := .exe
+  STOCK_DIR  := $(BUILD_DIR)/app_qt.dist
+  BIN        := $(STOCK_DIR)/$(APP_NAME)$(EXE)
+  PLATFORM_FLAGS := --windows-console-mode=disable --windows-icon-from-ico=packaging/windows/appicon.ico
 else ifeq ($(OS),macos)
-  PYTHON       ?= python3.12
-  VENV_PY      := $(VENV)/bin/python
-  PIP          := $(VENV)/bin/pip
-  ifeq ($(UNAME_M),arm64)
-    TARGET_TRIPLE := aarch64-apple-darwin
-  else
-    TARGET_TRIPLE := x86_64-apple-darwin
-  endif
-  PLATFORM_FLAGS := --macos-target-arch=$(UNAME_M)
-  EXE          :=
-  BREW ?= $(shell command -v brew 2>/dev/null || echo /opt/homebrew/bin/brew)
-  export PATH := /opt/homebrew/bin:/usr/local/bin:$(HOME)/.cargo/bin:$(PATH)
+  PYTHON     ?= python3.12
+  VENV_PY    := $(VENV)/bin/python
+  PIP        := $(VENV)/bin/pip
+  EXE        :=
+  STOCK_DIR  := $(BUILD_DIR)/app_qt.app
+  BIN        := $(STOCK_DIR)/Contents/MacOS/$(APP_NAME)
+  PLATFORM_FLAGS := --macos-create-app-bundle --macos-app-name=RatTracker --macos-app-icon=packaging/macos/appicon.icns
 else
-  PYTHON       ?= python3.12
-  VENV_PY      := $(VENV)/bin/python
-  PIP          := $(VENV)/bin/pip
-  ifeq ($(UNAME_M),aarch64)
-    TARGET_TRIPLE := aarch64-unknown-linux-gnu
-  else
-    TARGET_TRIPLE := x86_64-unknown-linux-gnu
-  endif
+  PYTHON     ?= python3.12
+  VENV_PY    := $(VENV)/bin/python
+  PIP        := $(VENV)/bin/pip
+  EXE        :=
+  STOCK_DIR  := $(BUILD_DIR)/app_qt.dist
+  BIN        := $(STOCK_DIR)/$(APP_NAME)
   PLATFORM_FLAGS :=
-  EXE          :=
-  export PATH := $(HOME)/.cargo/bin:$(PATH)
 endif
 
-SIDECAR := $(APP_DIR)/src-tauri/bin/main-$(TARGET_TRIPLE)$(EXE)
-
-APPIMAGE_DIR    := $(APP_DIR)/src-tauri/target/release/bundle/appimage
-APPIMAGE_PLUGIN := $(HOME)/.cache/tauri/linuxdeploy-plugin-appimage.AppImage
-GST_PLUGIN_DIR  ?= /usr/lib/$(shell gcc -print-multiarch 2>/dev/null)/gstreamer-1.0
-
-ifeq ($(OS),linux)
-  BUNDLES := --bundles deb,appimage
-else
-  BUNDLES :=
-endif
-
-.PHONY: help install run sidecar appimage fix-appimage build dist clean
+.PHONY: help install run cli test build standalone smoke appimage deb dmg installer dist clean
 
 # ---------------------------------------------------------------------------
 # Help
 # ---------------------------------------------------------------------------
 help: ## Show these commands
-	@echo "Morris Water Maze Analysis"
+	@echo "Morris Water Maze Analysis (Qt)"
 	@echo ""
-	@echo "  make install                         first-time setup"
-	@echo "  make run VIDEO=input/1.mp4       analyse a video"
-	@echo "  make appimage                        compile only the AppImage (faster)"
-	@echo "  make dist                            compile the app (installers in dist/)"
-	@echo "  make clean                           remove build files"
+	@echo "  make install                     first-time setup"
+	@echo "  make run                         open the desktop app"
+	@echo "  make cli VIDEO=input/1.mp4       analyse from the terminal"
+	@echo "  make test                        run the headless test suite"
+	@echo "  make build                       compile the standalone app"
+	@echo "  make smoke                       run the compiled app end to end"
+	@echo "  make dist                        compile installers into dist/"
+	@echo "  make clean                       remove build files"
 	@echo ""
-	@echo "Add options: make run VIDEO=input/1.mp4 ARGS=\"--autoconfig\""
+	@echo "Add options: make cli VIDEO=input/1.mp4 ARGS=\"--autoconfig\""
 
 # ---------------------------------------------------------------------------
 # First-time setup
 # ---------------------------------------------------------------------------
-install: ## Install system tools, Python and app dependencies
+install: ## Install system tools and Python dependencies
 ifeq ($(OS),linux)
-	@if ! dpkg -s libwebkit2gtk-4.1-dev >/dev/null 2>&1 || ! command -v python3.12 >/dev/null; then \
+	@if ! command -v python3.12 >/dev/null || ! command -v patchelf >/dev/null; then \
 		sudo apt update && sudo apt install -y \
 			curl wget file build-essential pkg-config patchelf \
-			libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev \
-			librsvg2-dev libxdo-dev python3.12 python3.12-venv python3.12-dev; \
+			python3.12 python3.12-venv python3.12-dev \
+			libgl1 libegl1 libxkbcommon0 libxkbcommon-x11-0 \
+			libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+			libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 \
+			libdbus-1-3 libfontconfig1 fontconfig; \
 	fi
-	@command -v node >/dev/null || { \
-		curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt install -y nodejs; }
 else ifeq ($(OS),macos)
-	@command -v $(BREW) >/dev/null || /bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-	@$(BREW) list python@3.12 >/dev/null 2>&1 || $(BREW) install python@3.12
-	@command -v node >/dev/null || { $(BREW) install node@20 && $(BREW) link node@20 --force; }
+	@command -v brew >/dev/null || /bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+	@brew list python@3.12 >/dev/null 2>&1 || brew install python@3.12
 else
 	@installed=0; \
 	if ! py -3.12 --version >/dev/null 2>&1; then \
 		winget install --silent --accept-package-agreements --accept-source-agreements Python.Python.3.12; installed=1; \
-	fi; \
-	if ! command -v node >/dev/null 2>&1; then \
-		winget install --silent --accept-package-agreements --accept-source-agreements OpenJS.NodeJS.LTS; installed=1; \
-	fi; \
-	if ! command -v cargo >/dev/null 2>&1; then \
-		winget install --silent --accept-package-agreements --accept-source-agreements Rustlang.Rustup; installed=1; \
 	fi; \
 	if [ ! -f "/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" ]; then \
 		winget install --silent --accept-package-agreements --accept-source-agreements Microsoft.VisualStudio.2022.BuildTools \
@@ -129,91 +110,100 @@ else
 		echo "Tools were installed. Close this terminal, reopen it, and run 'make install' again."; exit 1; \
 	fi
 endif
-	@command -v cargo >/dev/null || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 	@test -d $(VENV) || $(PYTHON) -m venv $(VENV)
 	@$(PIP) install --upgrade pip
 	@$(PIP) install -r requirements.txt
-	@cd $(APP_DIR) && npm install
-	@echo "Ready. Now run: make run VIDEO=input/yourvideo.mp4"
+	@echo "Ready. Now run: make run"
 
 # ---------------------------------------------------------------------------
-# Analyse a video
+# Run and test
 # ---------------------------------------------------------------------------
-run: ## Analyse a video (VIDEO=path, ARGS=extra flags)
+run: ## Open the desktop app
+	@test -x $(VENV_PY) || { echo "Run 'make install' first."; exit 1; }
+	$(VENV_PY) $(ENTRY)
+
+cli: ## Analyse a video from the terminal (VIDEO=path, ARGS=extra flags)
 	@test -x $(VENV_PY) || { echo "Run 'make install' first."; exit 1; }
 	@test -f "$(VIDEO)" || { echo "Video not found: $(VIDEO)"; exit 1; }
-	$(VENV_PY) $(ENTRY) --video "$(VIDEO)" $(ARGS)
+	$(VENV_PY) $(CLI_ENTRY) --video "$(VIDEO)" $(ARGS)
 
-# ---------------------------------------------------------------------------
-# Desktop app
-# ---------------------------------------------------------------------------
-sidecar: $(SIDECAR) ## Compile the Python part of the desktop app
-
-$(SIDECAR): $(PY_SOURCES)
+test: ## Run the headless test suite
 	@test -x $(VENV_PY) || { echo "Run 'make install' first."; exit 1; }
+	QT_QPA_PLATFORM=offscreen RATTRACKER_AUTOCONFIRM=1 \
+		$(VENV_PY) -m unittest discover -s tests -v
+
+smoke: build ## Run the compiled app end to end (headless)
+	@tmp=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp"' EXIT; \
+	if [ "$(OS)" = "windows" ]; then wtmp=$$(cygpath -w "$$tmp"); else wtmp="$$tmp"; fi; \
+	cp tests/fixtures/1.mp4 "$$tmp/1.mp4"; \
+	QT_QPA_PLATFORM=offscreen RATTRACKER_AUTOCONFIRM=1 \
+	RATTRACKER_CONFIG_DIR="$$wtmp/config" \
+	RATTRACKER_LOG="$$wtmp/run.log" \
+	RATTRACKER_AUTORUN="$$wtmp/1.mp4" \
+	RATTRACKER_AUTOEXIT=1 \
+	"$(BIN)"; \
+	status=$$?; \
+	if ! grep -q '"done": true' "$$tmp/run.log"; then \
+		echo "Frozen smoke failed (exit $$status)"; cat "$$tmp/run.log"; exit 1; \
+	fi; \
+	test -f "$$tmp/1"_*_coordinates.csv || { echo "Missing CSV output"; exit 1; }; \
+	test -f "$$tmp/1"_*_summary.txt || { echo "Missing summary output"; exit 1; }; \
+	echo "Frozen smoke OK"; \
+	test $$status -eq 0
+
+# ---------------------------------------------------------------------------
+# Compile
+# ---------------------------------------------------------------------------
+build: $(BIN) ## Compile the standalone app
+
+standalone: build ## Alias for build
+
+$(BIN): $(PY_SOURCES) $(DATA)
+	@test -x $(VENV_PY) || { echo "Run 'make install' first."; exit 1; }
+	rm -rf $(STOCK_DIR)
 	$(VENV_PY) -m nuitka \
 		--standalone \
-		--onefile \
+		--enable-plugin=pyside6 \
+		--include-package=ui \
+		--include-package=tracker \
 		--include-package=cv2 \
+		--include-data-file=appicon.png=appicon.png \
+		--include-data-dir=ui/assets=ui/assets \
+		--noinclude-qt-translations \
+		--noinclude-dlls=libQt5* \
+		--output-dir=$(BUILD_DIR) \
+		--output-filename=$(APP_NAME) \
 		$(PLATFORM_FLAGS) \
 		$(NUITKA_ARGS) \
 		$(ENTRY)
-	@mkdir -p $(dir $(SIDECAR))
-	@set -e; \
-	if [ -f main.bin ]; then mv -f main.bin "$(SIDECAR)"; \
-	elif [ -f main.exe ]; then mv -f main.exe "$(SIDECAR)"; \
-	else mv -f main "$(SIDECAR)"; fi
-	@chmod +x "$(SIDECAR)" 2>/dev/null || true
-	@echo "Python sidecar ready"
+	@test -x "$(BIN)" || { echo "Build finished but $(BIN) is missing."; exit 1; }
+	@echo "Standalone app: $(STOCK_DIR)"
 
-build: sidecar ## Compile the desktop app
-	@test -d $(APP_DIR)/node_modules || (cd $(APP_DIR) && npm install)
-	rm -rf $(APP_DIR)/src-tauri/target/release/bundle
-	cd $(APP_DIR) && npm run tauri build -- $(BUNDLES)
-ifneq (,$(findstring appimage,$(BUNDLES)))
-	@$(MAKE) --no-print-directory fix-appimage
+appimage: build ## Linux: build the AppImage
+	@test "$(OS)" = "linux" || { echo "AppImage is Linux only."; exit 1; }
+	bash packaging/linux/build_appimage.sh $(VERSION) "$(STOCK_DIR)" "$(DIST_DIR)"
+
+deb: build ## Linux: build the .deb
+	@test "$(OS)" = "linux" || { echo "deb is Linux only."; exit 1; }
+	bash packaging/linux/build_deb.sh $(VERSION) "$(STOCK_DIR)" "$(DIST_DIR)"
+
+dmg: build ## macOS: build the DMG
+	@test "$(OS)" = "macos" || { echo "DMG is macOS only."; exit 1; }
+	bash packaging/macos/build_dmg.sh $(VERSION) "$(STOCK_DIR)" "$(DIST_DIR)"
+
+installer: build ## Windows: build the setup EXE (requires Inno Setup)
+	@test "$(OS)" = "windows" || { echo "Installer is Windows only."; exit 1; }
+	iscc /DMyAppVersion=$(VERSION) packaging/windows/rattracker.iss
+
+dist: ## Compile the app and put installers in dist/
+ifeq ($(OS),linux)
+	@$(MAKE) --no-print-directory deb appimage
+else ifeq ($(OS),macos)
+	@$(MAKE) --no-print-directory dmg
+else
+	@$(MAKE) --no-print-directory installer
 endif
-
-appimage: sidecar ## Compile only the AppImage (Linux, faster)
-	@test "$(OS)" = "linux" || { echo "AppImage is Linux only."; exit 1; }
-	@test -d $(APP_DIR)/node_modules || (cd $(APP_DIR) && npm install)
-	rm -rf $(APPIMAGE_DIR)
-	cd $(APP_DIR) && npm run tauri build -- --bundles appimage
-	@$(MAKE) --no-print-directory fix-appimage
-	@mkdir -p $(DIST_DIR)
-	@rm -f $(DIST_DIR)/*.AppImage
-	@find $(APPIMAGE_DIR) -maxdepth 1 -name '*.AppImage' -exec cp -f {} $(DIST_DIR)/ \;
-	@echo "AppImage copied to $(DIST_DIR)/"
-
-# Tauri's AppImage bundler runs patchelf/strip on the Nuitka one-file sidecar,
-# which destroys its attached payload. Put the original sidecar back and
-# repackage the AppImage with the cached linuxdeploy plugin. The AppRun hook
-# points GStreamer at usr/lib/gstreamer-1.0, so bundle the host plugins there
-# or WebKit cannot decode the preview video (black window / no calibration).
-fix-appimage:
-	@test "$(OS)" = "linux" || { echo "AppImage is Linux only."; exit 1; }
-	@APP_DIR=$$(find "$(CURDIR)/$(APPIMAGE_DIR)" -maxdepth 1 -name '*.AppDir' 2>/dev/null | head -1); \
-	if [ -z "$$APP_DIR" ]; then echo "No AppDir found; skipping AppImage repair."; exit 0; fi; \
-	test -x "$(APPIMAGE_PLUGIN)" || { echo "Missing $(APPIMAGE_PLUGIN); run 'make appimage' once."; exit 1; }; \
-	OUT=$$(find "$(CURDIR)/$(APPIMAGE_DIR)" -maxdepth 1 -name '*.AppImage' | head -1); \
-	cp -f "$(SIDECAR)" "$$APP_DIR/usr/bin/main"; \
-	chmod +x "$$APP_DIR/usr/bin/main"; \
-	if [ -d "$(GST_PLUGIN_DIR)" ]; then \
-		mkdir -p "$$APP_DIR/usr/lib/gstreamer-1.0"; \
-		cp -a "$(GST_PLUGIN_DIR)/." "$$APP_DIR/usr/lib/gstreamer-1.0/"; \
-	fi; \
-	[ -n "$$OUT" ] && rm -f "$$OUT"; \
-	( cd "$(CURDIR)/$(APPIMAGE_DIR)" && ARCH=$$(uname -m) "$(APPIMAGE_PLUGIN)" --appimage-extract-and-run --appdir="$$APP_DIR" >/dev/null ); \
-	NEW=$$(find "$(CURDIR)/$(APPIMAGE_DIR)" -maxdepth 1 -name '*.AppImage' | head -1); \
-	if [ -z "$$NEW" ]; then echo "AppImage rebuild failed."; exit 1; fi; \
-	if [ -n "$$OUT" ] && [ "$$NEW" != "$$OUT" ]; then mv -f "$$NEW" "$$OUT"; NEW=$$OUT; fi; \
-	echo "AppImage repaired: $$NEW"
-
-dist: build ## Compile the app and put installers in dist/
-	rm -rf $(DIST_DIR)
-	mkdir -p $(DIST_DIR)
-	@find $(APP_DIR)/src-tauri/target/release/bundle -mindepth 2 -maxdepth 2 -type f \
-		-exec cp {} $(DIST_DIR)/ \;
 	@echo "Installers are in $(DIST_DIR)/"
 	@find $(DIST_DIR) -maxdepth 1 -type f | sed 's/^/  /'
 
@@ -221,8 +211,7 @@ dist: build ## Compile the app and put installers in dist/
 # Cleanup
 # ---------------------------------------------------------------------------
 clean: ## Remove build files
-	rm -rf main.build main.dist main.onefile-build __pycache__ tracker/__pycache__ $(DIST_DIR)
+	rm -rf $(BUILD_DIR) $(DIST_DIR) __pycache__ tracker/__pycache__ ui/__pycache__ tests/__pycache__
 	@find . -type d -name __pycache__ \
 		-not -path './$(VENV)/*' \
-		-not -path './$(APP_DIR)/node_modules/*' \
 		-exec rm -rf {} + 2>/dev/null || true

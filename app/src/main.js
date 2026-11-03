@@ -137,82 +137,6 @@ const I18N = {
 		tab_tracemap: "Tracemap",
 		tab_heatmap: "Heatmap",
 	},
-	fr: {
-		title: "Rat Tracker",
-		settings: "Paramètres",
-		detection: "Détection",
-		mog2_history_s: "Historique MOG2 (s)",
-		mog2_history_s_desc: "Durée en secondes pour construire le modèle de fond. Plus élevé = adaptation plus lente, meilleur pour les caméras stables.",
-		mog2_threshold: "Seuil MOG2",
-		mog2_threshold_desc: "Sensibilité de la détection du premier plan. Plus bas = plus sensible (faux positifs). Plus haut = moins sensible (peut rater le rat).",
-		detect_shadows: "Détecter les ombres",
-		detect_shadows_desc: "Active la détection d'ombres. Légèrement plus lent mais réduit les artefacts d'ombres confondus avec le rat.",
-		morph_open: "Noyau d'ouverture morphologique.",
-		morph_open_desc: "Taille du noyau pour supprimer le bruit. Doit être impair. Des valeurs plus grandes suppriment un bruit plus important.",
-		morph_close: "Noyau de fermeture morphologique.",
-		morph_close_desc: "Taille du noyau pour combler les trous dans le blob détecté. Doit être impair.",
-		min_area: "Surface contour min. (px²)",
-		min_area_desc: "Taille minimale du blob pour être considéré comme le rat. Augmentez si du bruit est détecté.",
-		max_area: "Surface contour max. (px²)",
-		max_area_desc: "Taille maximale du blob pour être considéré comme le rat. Diminuez si des reflets sont détectés.",
-		trail_s: "Longueur trace (s)",
-		trail_s_desc: "Durée en secondes de la trace de mouvement dessinée dans la vidéo de sortie. Purement visuel.",
-		debug_frames: "Images de débogage",
-		debug_frames_desc: "Sauvegarde les N premiers masques de premier plan pour le débogage. 0 pour désactiver.",
-		pool_calib: "Cache calibration bassin",
-		pool_note: "Rempli automatiquement après la première calibration. Modifiez pour réutiliser sur plusieurs vidéos.",
-		pool_west: "Bassin Ouest (x,y)",
-		pool_north: "Bassin Nord (x,y)",
-		pool_east: "Bassin Est (x,y)",
-		pool_south: "Bassin Sud (x,y)",
-		platform_calib: "Cache calibration plateforme",
-		platform_note: "Requis pour les fonctions dépendantes de la plateforme. Rempli automatiquement après calibration.",
-		platform_nw: "Plateforme NO (x,y)",
-		platform_ne: "Plateforme NE (x,y)",
-		platform_se: "Plateforme SE (x,y)",
-		platform_sw: "Plateforme SO (x,y)",
-		features: "Fonctions d'analyse",
-		features_note: "Les fonctions dépendantes de la plateforme nécessitent des coordonnées de calibration.",
-		quadrantcross: "Croisements de quadrants",
-		quadrantcross_desc: "Compte le nombre de fois que le rat quitte chaque quadrant.",
-		platformcross: "Croisements de plateforme",
-		platformcross_desc: "Compte le nombre de fois que le rat quitte la plateforme. Nécessite la calibration.",
-		paraplatform: "Analyse ParaPlateforme",
-		paraplatform_desc: "Suit le temps et la distance dans une zone agrandie autour de la plateforme.",
-		paraplatform_scale: "Facteur d'échelle de surface",
-		paraplatform_scale_desc: "Multiplicateur de surface pour la zone ParaPlateforme. 4 = 4× la surface réelle.",
-		proximity: "Proximité de la plateforme",
-		proximity_desc: "Calcule la distance moyenne du rat au centre de la plateforme.",
-		latency: "Latence vers la plateforme",
-		latency_desc: "Enregistre le temps et la distance jusqu'à la première montée sur la plateforme.",
-		tracemapcolor: "Couleur tracemap",
-		tracemapcolor_desc: "Couleur du tracé sur l'image tracemap.",
-		ratcolor: "Couleur du marqueur rat",
-		ratcolor_desc: "Couleur du point et du marqueur dessinés sur le rat dans la vidéo de sortie.",
-		mog2_learning_rate: "Taux d'apprentissage MOG2",
-		mog2_learning_rate_desc: "Vitesse d'adaptation du fond. -1 = automatique. Des valeurs basses (ex. 0.001) empêchent un rat immobile d'être absorbé dans le fond.",
-		max_interp_gap: "Écart d'interpolation max (images)",
-		max_interp_gap_desc: "Nombre max d'images manquantes consécutives à interpoler. 0 = illimité. Ex. 10 pour éviter les lignes droites pendant les longues pertes de détection.",
-		heatmap_sigma: "Sigma de flou de la carte de chaleur",
-		heatmap_sigma_desc: "Rayon du flou gaussien pour la carte de chaleur. 0 = calculé automatiquement selon la résolution (recommandé).",
-		autoconfig: "Auto-Configuration de la Détection",
-		autoconfig_desc: "Règle automatiquement le seuil MOG2, les noyaux morphologiques et la durée d'historique en analysant la vidéo avant le suivi. Les résultats sont écrits dans les paramètres après l'exécution.",
-		colorall: "Afficher toutes les détections",
-		colorall_desc: "Dessine tous les blobs candidats sur la vidéo : vert = soustraction rapide, bleu = soustraction lente, rouge = temporel. Utile pour déboguer la détection.",
-		save: "Enregistrer",
-		cancel: "Annuler",
-		select_video: "Choisir une vidéo",
-		no_file: "Aucun video sélectionnée",
-		start_time: "Début (s)",
-		end_time: "Fin (s)",
-		pool_radius: "Rayon (cm)",
-		run: "Lancer",
-		tab_video: "Vidéo",
-		tab_csv: "CSV",
-		tab_summary: "Résumé",
-		tab_tracemap: "Carte de Trajectoire",
-		tab_heatmap: "Carte de Chaleur",
-	},
 	tr: {
 		title: "Fare İzleyici",
 		settings: "Ayarlar",
@@ -293,7 +217,6 @@ const I18N = {
 
 const LANG_META = {
 	en: { flag: "assets/uk.svg", name: "English" },
-	fr: { flag: "assets/fr.svg", name: "Français" },
 	tr: { flag: "assets/tr.svg", name: "Türkçe" },
 };
 
@@ -333,7 +256,9 @@ let activeProfileName = loadActiveProfileName();
 if (!profiles[activeProfileName]) activeProfileName = DEFAULT_PROFILE_NAME;
 
 function loadConfig() {
-	return { ...DEFAULTS, ...profiles[activeProfileName] };
+	const loaded = { ...DEFAULTS, ...profiles[activeProfileName] };
+	if (!LANG_META[loaded.language]) loaded.language = "en";
+	return loaded;
 }
 
 function saveConfig(newCfg) {
@@ -670,7 +595,7 @@ function applyI18n() {
 	});
 
 	if (!selectedFile) document.getElementById("filePath").textContent = translate("no_file");
-	const meta = LANG_META[cfg.language];
+	const meta = LANG_META[cfg.language] ?? LANG_META.en;
 	document.getElementById("langFlagSelected").src = meta.flag;
 	document.getElementById("langNameSelected").textContent = meta.name;
 }
@@ -681,6 +606,7 @@ function toggleLangDropdown() {
 }
 
 function selectLang(lang) {
+	if (!LANG_META[lang]) lang = "en";
 	cfg.language = lang;
 	saveConfig(cfg);
 	applyI18n();
@@ -869,7 +795,6 @@ const CALIB_PLAT_COLORS = { NW: "#ff64c8", NE: "#64c8ff", SE: "#c8ff64", SW: "#f
 
 const CALIB_POOL_LABELS = {
 	en: { WEST: "WEST", NORTH: "NORTH", EAST: "EAST", SOUTH: "SOUTH" },
-	fr: { WEST: "OUEST", NORTH: "NORD", EAST: "EST", SOUTH: "SUD" },
 	tr: { WEST: "BATI", NORTH: "KUZEY", EAST: "DOGU", SOUTH: "GUNEY" },
 };
 

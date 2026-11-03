@@ -35,7 +35,7 @@ def parse_tracemap_color(value):
 def build_arg_parser():
     parser = argparse.ArgumentParser(description="Track a rat in a water maze video.")
     parser.add_argument("--video",               required=True,  type=str)
-    parser.add_argument("--language",            default="en",   choices=("en", "fr", "tr"))
+    parser.add_argument("--language",            default="en",   choices=("en", "tr"))
     parser.add_argument("--start",               default=None,   type=float)
     parser.add_argument("--end",                 default=None,   type=float)
     parser.add_argument("--pool_radius_cm",      default=60,     type=float)

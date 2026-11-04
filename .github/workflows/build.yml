@@ -6,6 +6,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Serialize matrix jobs per runner so the shared `dist/` upload never races
+# and each artifact is produced by exactly one runner image.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     name: ${{ matrix.name }}
@@ -24,10 +30,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # setup-python@v5 does NOT install Python on the runner by default in
+      # recent versions unless `python-version` is set — it is set here, so
+      # this is required. Do NOT remove.
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
+      # Ubuntu 22.04 ships Python 3.10 only. setup-python already put a real
+      # 3.12 interpreter on PATH (the python on PATH is the 3.12 binary,
+      # never a symlink), so `python -m venv venv` works. There is NO
+      # apt python3.12 / python3.12-venv / python3.12-dev on 22.04.
       - name: Install Linux runtime and build packages
         if: runner.os == 'Linux'
         run: |
@@ -37,7 +50,7 @@ jobs:
             libgl1 libegl1 libxkbcommon0 libxkbcommon-x11-0 \
             libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
             libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 \
-            libdbus-1-3 libfontconfig1 fonts-dejavu-core
+            libdbus-1-3 libfontconfig1 fonts-dejavu-core file curl ca-certificates
 
       - name: Create virtual environment and install dependencies
         shell: bash
@@ -69,18 +82,32 @@ jobs:
         shell: bash
         run: make dmg
 
-      - name: Install Inno Setup
+      # choco has no headless-safe guarantee on this image; invoke with
+      # explicit args and verify iscc lands on PATH before continuing.
+      - name: Install Inno Setup (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: choco install innosetup --yes --no-progress
+        run: |
+          choco install innosetup --yes --no-progress
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            $iscc = Get-Command iscc -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+          }
+          if (-not $iscc -or -not (Test-Path $iscc)) {
+            throw "Inno Setup not found after choco install"
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $iscc -Parent)
+          echo "ISCC=$iscc"
 
       - name: Build Windows installer
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          echo "C:\\Program Files (x86)\\Inno Setup 6" >> "$GITHUB_PATH"
+          which iscc || ls "/c/Program Files (x86)/Inno Setup 6/"
           make installer
 
+      # Per-OS artifact names avoid the upload-artifact collision when
+      # multiple matrix jobs would upload *setup.exe / *.dmg to the same name.
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:

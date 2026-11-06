@@ -5,13 +5,11 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, QUrl
-from PySide6.QtGui import QDesktopServices, QPixmap
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QHBoxLayout,
     QLabel,
     QPlainTextEdit,
-    QPushButton,
     QTableView,
     QVBoxLayout,
     QWidget,
@@ -102,29 +100,16 @@ class VideoTab(QWidget):
     def __init__(self, lang: str = "en", parent=None):
         super().__init__(parent)
         self.lang = lang
-        self.path = ""
         self.player = VideoPlayer(self)
-        self.external = QPushButton(translate(lang, "open_external"))
-        self.external.clicked.connect(self._open_external)
-        row = QHBoxLayout()
-        row.addStretch(1)
-        row.addWidget(self.external)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.player, 1)
-        layout.addLayout(row)
 
     def load(self, path: str) -> None:
-        self.path = path
         self.player.load(path, translate(self.lang, "video_missing"))
-
-    def _open_external(self):
-        if self.path:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(self.path))
 
     def retranslate(self, lang: str):
         self.lang = lang
-        self.external.setText(translate(lang, "open_external"))
 
     def stop(self):
         self.player.stop()

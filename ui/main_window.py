@@ -5,8 +5,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from PySide6.QtCore import QCoreApplication, Qt, QTimer, QUrl
-from PySide6.QtGui import QDesktopServices, QDoubleValidator, QIcon
+from PySide6.QtCore import QCoreApplication, Qt, QTimer
+from PySide6.QtGui import QDoubleValidator, QIcon
 from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -142,15 +142,12 @@ class MainWindow(QMainWindow):
         self.progress_bar.setFixedWidth(260)
         self.eta_label = QLabel()
         self.eta_label.setMinimumWidth(90)
-        self.open_folder_button = QPushButton()
-        self.open_folder_button.clicked.connect(self._open_output_folder)
         row2.addWidget(self.run_button)
         row2.addWidget(self.cancel_button)
         row2.addWidget(self.progress_text)
         row2.addWidget(self.progress_bar)
         row2.addWidget(self.eta_label)
         row2.addStretch(1)
-        row2.addWidget(self.open_folder_button)
         layout.addLayout(row2)
 
         self.tabs = QTabWidget()
@@ -180,7 +177,6 @@ class MainWindow(QMainWindow):
         self.radius_label.setText(translate(lang, "pool_radius"))
         self.run_button.setText(translate(lang, "run"))
         self.cancel_button.setText(translate(lang, "cancel"))
-        self.open_folder_button.setText(translate(lang, "open_folder"))
         self.settings_button.setToolTip(translate(lang, "settings"))
         self.tabs.setTabText(0, translate(lang, "tab_video"))
         self.tabs.setTabText(1, translate(lang, "tab_csv"))
@@ -345,11 +341,6 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(0)
         self.progress_text.setText(translate(self.lang, "ready"))
         self.eta_label.setText("")
-
-    def _open_output_folder(self):
-        if not self.selected_file:
-            return
-        QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(self.selected_file).parent)))
 
     def closeEvent(self, event):
         if self.runner.is_running():

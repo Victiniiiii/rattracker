@@ -59,9 +59,12 @@ else
   STOCK_DIR  := $(BUILD_DIR)/app_qt.dist
   BIN        := $(STOCK_DIR)/$(APP_NAME)
   PLATFORM_FLAGS :=
+  # Qt's xcb plugin needs libxcb-cursor, which many desktops lack. Use the
+  # bundled copy so `make run` works without installing system packages.
+  RUN_ENV    := LD_LIBRARY_PATH="$(CURDIR)/packaging/linux/lib:$$LD_LIBRARY_PATH"
 endif
 
-.PHONY: help install run cli test build standalone smoke appimage deb dmg installer dist clean
+.PHONY: help install run cli test build standalone bundle-libs smoke appimage deb dmg installer dist clean
 
 # ---------------------------------------------------------------------------
 # Help
@@ -120,7 +123,7 @@ endif
 # ---------------------------------------------------------------------------
 run: ## Open the desktop app
 	@test -x $(VENV_PY) || { echo "Run 'make install' first."; exit 1; }
-	$(VENV_PY) $(ENTRY)
+	$(RUN_ENV) $(VENV_PY) $(ENTRY)
 
 cli: ## Analyse a video from the terminal (VIDEO=path, ARGS=extra flags)
 	@test -x $(VENV_PY) || { echo "Run 'make install' first."; exit 1; }
@@ -180,11 +183,27 @@ $(BIN): $(PY_SOURCES) $(DATA)
 	@test -x "$(BIN)" || { echo "Build finished but $(BIN) is missing."; exit 1; }
 	@echo "Standalone app: $(STOCK_DIR)"
 
-appimage: build ## Linux: build the AppImage
+bundle-libs: build ## Linux: copy xcb libs Nuitka does not bundle
+	@test "$(OS)" = "linux" || { echo "bundle-libs is Linux only."; exit 1; }
+	@for lib in libxcb-cursor.so.0; do \
+		src=""; \
+		for d in /usr/lib/*-linux-gnu /usr/lib64 /usr/lib; do \
+			if [ -f "$$d/$$lib" ]; then src="$$d/$$lib"; break; fi; \
+		done; \
+		if [ -z "$$src" ]; then src="packaging/linux/lib/$$lib"; fi; \
+		if [ -f "$$src" ]; then \
+			cp -a "$$src" "$(STOCK_DIR)/$$lib"; \
+			echo "Bundled $$lib from $$src"; \
+		else \
+			echo "WARNING: $$lib not found; the AppImage may fail on xcb."; \
+		fi; \
+	done
+
+appimage: bundle-libs ## Linux: build the AppImage
 	@test "$(OS)" = "linux" || { echo "AppImage is Linux only."; exit 1; }
 	bash packaging/linux/build_appimage.sh $(VERSION) "$(STOCK_DIR)" "$(DIST_DIR)"
 
-deb: build ## Linux: build the .deb
+deb: bundle-libs ## Linux: build the .deb
 	@test "$(OS)" = "linux" || { echo "deb is Linux only."; exit 1; }
 	bash packaging/linux/build_deb.sh $(VERSION) "$(STOCK_DIR)" "$(DIST_DIR)"
 

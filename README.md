@@ -68,6 +68,18 @@ make dist       # installers in dist/
 `make install` sets up a virtual environment and installs
 `PySide6-Essentials`, `opencv-python-headless`, `numpy`, and `nuitka`.
 
+On Linux, running from source also needs the Qt X11 libraries. Most desktops
+already have them; if Qt reports `Could not load the Qt platform plugin "xcb"`,
+install the missing package:
+
+```bash
+sudo apt install libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+  libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxkbcommon-x11-0
+```
+
+The packaged AppImage and `.deb` bundle `libxcb-cursor.so.0` themselves, so they
+start on systems where that package is absent.
+
 `make dist` builds the installer for the computer you compile on:
 
 - Windows: `morriswatermazeanalysis_*_amd64-setup.exe` (needs [Inno Setup](https://jrsoftware.org/isinfo.php))
@@ -78,6 +90,7 @@ Useful single targets:
 
 ```bash
 make build          # Nuitka standalone directory
+make bundle-libs    # Linux only: add xcb libraries Nuitka skips
 make smoke          # run the compiled app end to end
 make appimage       # Linux only, faster than make dist
 make deb            # Linux only
@@ -128,8 +141,12 @@ here), so treat the first push as the cross-platform proof point.
 - `make test` — 15 headless tests OK (config/share-string, i18n parity,
   calibration clicks + confirm + frozen E2E, backend byte-parity CSV/summary).
 - `make smoke` — frozen `rattracker` runs the fixture video end to end.
-- `make deb` / `make appimage` — `dist/rattracker_1.1.0_amd64.deb` (84M) and
-  `dist/rattracker_1.1.0_x86_64.AppImage` (107M), extract-checked.
+- `make deb` / `make appimage` — `dist/rattracker_1.1.0_amd64.deb` (90M) and
+  `dist/rattracker_1.1.0_x86_64.AppImage` (113M), extract-checked.
+- Real X11 (`DISPLAY=:0`, `QT_QPA_PLATFORM=xcb`) — AppImage and the extracted
+  `.deb` tree both start and complete a full run of the fixture video. This
+  caught the missing `libxcb-cursor.so.0`, now bundled by `make bundle-libs`
+  from `packaging/linux/lib/` (fallback: the system copy).
 
 **NOT locally verified (scripts present, CI-only):**
 

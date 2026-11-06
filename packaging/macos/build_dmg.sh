@@ -11,6 +11,6 @@ test -d "$APP" || { echo "Missing app bundle: $APP"; exit 1; }
 mkdir -p "$OUT_DIR"
 OUT="$OUT_DIR/rattracker_${VERSION}_$(uname -m).dmg"
 rm -f "$OUT"
-hdiutil create -volname "Morris Water Maze Analysis" -srcfolder "$APP" \
+hdiutil create -volname "Rat Tracker" -srcfolder "$APP" \
   -ov -format UDZO "$OUT"
 echo "Built $OUT"

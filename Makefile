@@ -70,7 +70,7 @@ endif
 # Help
 # ---------------------------------------------------------------------------
 help: ## Show these commands
-	@echo "Morris Water Maze Analysis (Qt)"
+	@echo "Rat Tracker (Qt)"
 	@echo ""
 	@echo "  make install                     first-time setup"
 	@echo "  make run                         open the desktop app"

@@ -6,7 +6,7 @@
   #define MyAppVersion "1.1.0"
 #endif
 
-#define MyAppName "Morris Water Maze Analysis"
+#define MyAppName "Rat Tracker"
 #define MyAppExeName "rattracker.exe"
 
 [Setup]
@@ -17,7 +17,7 @@ DefaultDirName={autopf}\RatTracker
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=..\..\dist
-OutputBaseFilename=morriswatermazeanalysis_{#MyAppVersion}_amd64-setup
+OutputBaseFilename=rattracker_{#MyAppVersion}_amd64-setup
 SetupIconFile=packaging\windows\appicon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2

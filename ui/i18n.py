@@ -130,7 +130,7 @@ EN = {
     "analyse_stopped": "The analysis engine stopped without producing a result.",
     "ready": "Ready",
     "language": "Language",
-    "app_name": "Morris Water Maze Analysis",
+    "app_name": "Rat Tracker",
 }
 
 
@@ -261,7 +261,7 @@ TR = {
     "analyse_stopped": "Analiz motoru sonuç üretmeden durdu.",
     "ready": "Hazır",
     "language": "Dil",
-    "app_name": "Morris Su Labirenti Analizi",
+    "app_name": "Rat Tracker",
 }
 
 

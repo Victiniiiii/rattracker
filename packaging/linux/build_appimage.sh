@@ -27,8 +27,8 @@ install -m 0644 "$ROOT/appicon.png" "$APPDIR/.DirIcon"
 cat > "$APPDIR/rattracker.desktop" <<'DESKTOP'
 [Desktop Entry]
 Type=Application
-Name=Morris Water Maze Analysis
-Comment=Track a rat in a water maze video
+Name=Rat Tracker
+Comment=Track a rat in a video
 Exec=rattracker
 Icon=rattracker
 Terminal=false

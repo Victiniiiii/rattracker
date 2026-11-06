@@ -64,7 +64,7 @@ def main() -> int:
     QCoreApplication.setApplicationName("RatTracker")
     QCoreApplication.setApplicationVersion("1.1.0")
     app = QApplication(sys.argv)
-    app.setApplicationDisplayName("Morris Water Maze Analysis")
+    app.setApplicationDisplayName("Rat Tracker")
     icon_path = app_icon_path()
     if icon_path.exists():
         app.setWindowIcon(QIcon(str(icon_path)))

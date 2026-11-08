@@ -8,6 +8,10 @@ import sys
 
 
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] in ("--version", "-V"):
+        from ui.version import read_version
+        print(read_version())
+        return 0
     if len(sys.argv) > 1 and sys.argv[1] == "--backend":
         del sys.argv[1]
         from tracker.pipeline import main as pipeline_main

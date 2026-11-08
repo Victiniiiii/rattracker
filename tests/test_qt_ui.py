@@ -30,10 +30,11 @@ if str(ROOT) not in sys.path:
 from ui.calibration import CalibrationDialog, ellipse_from_nsew
 from ui.config import (DEFAULTS, ConfigStore, config_dir, config_to_share_string,
                        share_string_to_config)
-from ui.i18n import EN, TR
+from ui.i18n import EN, TR, translate
 from ui.main_window import MainWindow
 from ui.runner import build_args
 from ui.settings_dialog import SettingsDialog
+from ui.version import read_version
 
 APP = QApplication.instance() or QApplication([])
 QCoreApplication.setOrganizationName("RatTrackerTests")
@@ -115,6 +116,22 @@ class ConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with patch.dict(os.environ, {"RATTRACKER_CONFIG_DIR": tmp}):
                 self.assertEqual(config_dir(), Path(tmp))
+
+
+class VersionTests(unittest.TestCase):
+    def test_version_file_is_valid_and_used(self):
+        text = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        self.assertRegex(text, r"^\d+\.\d+\.\d+")
+        self.assertEqual(read_version(), text)
+
+    def test_window_shows_file_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            window = MainWindow(make_store(Path(tmp)))
+            try:
+                self.assertEqual(window.version_label.text(), f"v{read_version()}")
+                self.assertEqual(window.windowTitle(), translate("en", "app_name"))
+            finally:
+                window.close()
 
 
 class CalibrationTests(unittest.TestCase):

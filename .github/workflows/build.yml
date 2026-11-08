@@ -1,21 +1,52 @@
 name: build
 
-on:
+# Build only when the app version changes. Bump the VERSION file (for example
+# `make set-version V=1.1.1`), commit, and push; this workflow reads that file
+# and turns it into the app version, installer names, and artifact names.
+# Use the manual "Run workflow" button to rebuild the same version.
+"on":
   push:
-    branches: ["**"]
-  pull_request:
+    branches: ["main"]
+    paths:
+      - VERSION
   workflow_dispatch:
 
-# Serialize matrix jobs per runner so the shared `dist/` upload never races
-# and each artifact is produced by exactly one runner image.
+permissions:
+  contents: read
+
+# One run per branch; artifacts of a running build are never replaced midway.
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  version:
+    name: read version
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read and validate VERSION
+        id: read
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+            echo "Invalid VERSION file: '$version' (expected X.Y.Z)" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Building Rat Tracker $version"
+
   build:
     name: ${{ matrix.name }}
+    needs: version
     runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
@@ -60,6 +91,16 @@ jobs:
           "$PY" -m pip install --upgrade pip
           "$PY" -m pip install -r requirements.txt
 
+      - name: Check VERSION
+        shell: bash
+        run: |
+          file_version="$(tr -d '[:space:]' < VERSION)"
+          test "$file_version" = "$VERSION" || {
+            echo "VERSION file has '$file_version' but this run expects '$VERSION'"
+            exit 1
+          }
+          echo "VERSION file: $VERSION"
+
       - name: Run tests
         shell: bash
         run: make test
@@ -67,6 +108,10 @@ jobs:
       - name: Compile standalone app
         shell: bash
         run: make build
+
+      - name: Verify built app version
+        shell: bash
+        run: make check-version VERSION="$VERSION"
 
       - name: Run compiled app end to end
         shell: bash
@@ -104,14 +149,14 @@ jobs:
         shell: bash
         run: |
           which iscc || ls "/c/Program Files (x86)/Inno Setup 6/"
-          make installer
+          make installer VERSION="$VERSION"
 
-      # Per-OS artifact names avoid the upload-artifact collision when
-      # multiple matrix jobs would upload *setup.exe / *.dmg to the same name.
+      # Per-OS and per-version artifact names keep uploads distinct and make
+      # the published version obvious without opening the archive.
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
-          name: rattracker-${{ matrix.name }}
+          name: rattracker-${{ needs.version.outputs.version }}-${{ matrix.name }}
           path: |
             dist/*.deb
             dist/*.AppImage

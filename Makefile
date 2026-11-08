@@ -7,11 +7,11 @@ SHELL := bash
 VENV        ?= venv
 VIDEO       ?= input/1.mp4
 ARGS        ?=
-VERSION     ?= 1.1.0
+VERSION     ?= $(shell cat VERSION 2>/dev/null || echo 0.0.0)
 
 ENTRY       := app_qt.py
 CLI_ENTRY   := main.py
-PY_SOURCES  := $(ENTRY) $(CLI_ENTRY) $(wildcard ui/*.py) $(wildcard tracker/*.py) requirements.txt
+PY_SOURCES  := $(ENTRY) $(CLI_ENTRY) VERSION $(wildcard ui/*.py) $(wildcard tracker/*.py) requirements.txt
 DATA        := appicon.png packaging/windows/appicon.ico packaging/macos/appicon.icns $(wildcard ui/assets/*)
 BUILD_DIR   := build
 DIST_DIR    ?= dist
@@ -64,7 +64,7 @@ else
   RUN_ENV    := LD_LIBRARY_PATH="$(CURDIR)/packaging/linux/lib:$$LD_LIBRARY_PATH"
 endif
 
-.PHONY: help install run cli test build standalone bundle-libs smoke appimage deb dmg installer dist clean
+.PHONY: help install run cli test version set-version build standalone check-version bundle-libs smoke appimage deb dmg installer dist clean
 
 # ---------------------------------------------------------------------------
 # Help
@@ -76,6 +76,8 @@ help: ## Show these commands
 	@echo "  make run                         open the desktop app"
 	@echo "  make cli VIDEO=input/1.mp4       analyse from the terminal"
 	@echo "  make test                        run the headless test suite"
+	@echo "  make version                     show the app version"
+	@echo "  make set-version V=1.1.1         write a new app version"
 	@echo "  make build                       compile the standalone app"
 	@echo "  make smoke                       run the compiled app end to end"
 	@echo "  make dist                        compile installers into dist/"
@@ -135,6 +137,16 @@ test: ## Run the headless test suite
 	QT_QPA_PLATFORM=offscreen RATTRACKER_AUTOCONFIRM=1 \
 		$(VENV_PY) -m unittest discover -s tests -v
 
+version: ## Show the app version
+	@echo $(VERSION)
+
+set-version: ## Write a new app version, e.g. make set-version V=1.1.1
+	@test -n "$(V)" || { echo "Usage: make set-version V=1.1.1"; exit 1; }
+	@echo "$(V)" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$$' \
+		|| { echo "Invalid version: $(V) (expected X.Y.Z)"; exit 1; }
+	@printf '%s\n' "$(V)" > VERSION
+	@echo "VERSION is now $(V)"
+
 smoke: build ## Run the compiled app end to end (headless)
 	@tmp=$$(mktemp -d); \
 	trap 'rm -rf "$$tmp"' EXIT; \
@@ -162,16 +174,26 @@ build: $(BIN) ## Compile the standalone app
 
 standalone: build ## Alias for build
 
+check-version: build ## Check the built app reports the VERSION file
+ifeq ($(OS),windows)
+	@got=$$(tr -d '\r\n' < "$(STOCK_DIR)/VERSION"); test "$$got" = "$(VERSION)" || { echo "Built version '$$got' does not match VERSION '$(VERSION)'"; exit 1; }
+else
+	@got=$$("$(BIN)" --version | tr -d '\r\n'); test "$$got" = "$(VERSION)" || { echo "Built version '$$got' does not match VERSION '$(VERSION)'"; exit 1; }
+endif
+	@echo "Built app reports version $(VERSION)"
+
 $(BIN): $(PY_SOURCES) $(DATA)
 	@test -x $(VENV_PY) || { echo "Run 'make install' first."; exit 1; }
 	rm -rf $(STOCK_DIR)
 	$(VENV_PY) -m nuitka \
 		--standalone \
+		--assume-yes-for-downloads \
 		--enable-plugin=pyside6 \
 		--include-package=ui \
 		--include-package=tracker \
 		--include-package=cv2 \
 		--include-data-file=appicon.png=appicon.png \
+		--include-data-file=VERSION=VERSION \
 		--include-data-dir=ui/assets=ui/assets \
 		--noinclude-qt-translations \
 		--noinclude-dlls=libQt5* \

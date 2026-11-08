@@ -9,6 +9,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from .resources import app_icon_path
+from .version import read_version
 
 STYLE = """
 QWidget { background: #17181c; color: #e6e6e6; font-size: 10pt; }
@@ -62,7 +63,7 @@ QToolTip { background: #262830; color: #e6e6e6; border: 1px solid #3a3d46; }
 def main() -> int:
     QCoreApplication.setOrganizationName("RatTracker")
     QCoreApplication.setApplicationName("RatTracker")
-    QCoreApplication.setApplicationVersion("1.1.0")
+    QCoreApplication.setApplicationVersion(read_version())
     app = QApplication(sys.argv)
     app.setApplicationDisplayName("Rat Tracker")
     icon_path = app_icon_path()

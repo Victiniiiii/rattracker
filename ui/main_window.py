@@ -30,8 +30,9 @@ from .resources import app_icon_path, asset_path
 from .results import CsvTab, ImageTab, SummaryTab, VideoTab
 from .runner import BackendRunner
 from .settings_dialog import SettingsDialog
+from .version import read_version
 
-APP_VERSION = "1.1.0"
+APP_VERSION = read_version()
 
 
 class MainWindow(QMainWindow):

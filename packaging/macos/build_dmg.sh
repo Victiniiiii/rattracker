@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-VERSION="${1:-1.1.0}"
+VERSION="${1:-$(cat "$ROOT/VERSION")}"
 APP="${2:-$ROOT/build/app_qt.app}"
 OUT_DIR="${3:-$ROOT/dist}"
 

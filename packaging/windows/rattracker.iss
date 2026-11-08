@@ -1,9 +1,12 @@
 ; Inno Setup script for a Nuitka standalone build.
-; Run from the repository root:
-;   iscc /DMyAppVersion=1.1.0 packaging\windows\rattracker.iss
+; Run from the repository root (reads VERSION through the Makefile):
+;   make installer
+; Or pass the version yourself:
+;   iscc /DMyAppVersion=1.2.3 packaging\windows\rattracker.iss
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.0"
+  ; make installer always passes the version from the VERSION file.
+  #define MyAppVersion "0.0.0"
 #endif
 
 #define MyAppName "Rat Tracker"

@@ -1,3 +1,5 @@
 """Qt desktop interface for the rat tracker."""
 
-__version__ = "1.1.0"
+from .version import read_version
+
+__version__ = read_version()

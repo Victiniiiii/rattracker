@@ -1,4 +1,17 @@
-SHELL := bash
+# Windows also ships a WSL bash.exe; use Git Bash for native build tools.
+ifeq ($(OS),Windows_NT)
+  GIT_BASH := $(firstword $(wildcard C:/Progra~1/Git/bin/bash.exe C:/Progra~2/Git/bin/bash.exe))
+  ifneq ($(GIT_BASH),)
+    SHELL := $(GIT_BASH)
+  else
+    SHELL := bash
+  endif
+else
+  SHELL := bash
+endif
+# Force recipes through Bash, including simple commands such as echo, which
+# native Windows make otherwise attempts to launch as separate executables.
+.SHELLFLAGS := -o pipefail -c
 .DEFAULT_GOAL := help
 
 # ---------------------------------------------------------------------------
@@ -36,9 +49,9 @@ else
 endif
 
 ifeq ($(OS),windows)
-  PYTHON     ?= py -3.12
+  PYTHON     ?= $(shell if py -3.12 --version >/dev/null 2>&1; then echo 'py -3.12'; else echo python; fi)
   VENV_PY    := $(VENV)/Scripts/python.exe
-  PIP        := $(VENV)/Scripts/pip.exe
+  PIP        := $(VENV_PY) -m pip
   EXE        := .exe
   STOCK_DIR  := $(BUILD_DIR)/app_qt.dist
   BIN        := $(STOCK_DIR)/$(APP_NAME)$(EXE)
@@ -46,7 +59,7 @@ ifeq ($(OS),windows)
 else ifeq ($(OS),macos)
   PYTHON     ?= python3.12
   VENV_PY    := $(VENV)/bin/python
-  PIP        := $(VENV)/bin/pip
+  PIP        := $(VENV_PY) -m pip
   EXE        :=
   STOCK_DIR  := $(BUILD_DIR)/app_qt.app
   BIN        := $(STOCK_DIR)/Contents/MacOS/$(APP_NAME)
@@ -54,7 +67,7 @@ else ifeq ($(OS),macos)
 else
   PYTHON     ?= python3.12
   VENV_PY    := $(VENV)/bin/python
-  PIP        := $(VENV)/bin/pip
+  PIP        := $(VENV_PY) -m pip
   EXE        :=
   STOCK_DIR  := $(BUILD_DIR)/app_qt.dist
   BIN        := $(STOCK_DIR)/$(APP_NAME)
@@ -104,12 +117,12 @@ else ifeq ($(OS),macos)
 	@brew list python@3.12 >/dev/null 2>&1 || brew install python@3.12
 else
 	@installed=0; \
-	if ! py -3.12 --version >/dev/null 2>&1; then \
-		winget install --silent --accept-package-agreements --accept-source-agreements Python.Python.3.12; installed=1; \
+	if ! $(PYTHON) -c 'import sys; sys.exit(sys.version_info[:2] != (3, 12))' >/dev/null 2>&1; then \
+		winget install --silent --accept-package-agreements --accept-source-agreements Python.Python.3.12 || exit $$?; installed=1; \
 	fi; \
 	if [ ! -f "/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" ]; then \
 		winget install --silent --accept-package-agreements --accept-source-agreements Microsoft.VisualStudio.2022.BuildTools \
-			--override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools"; installed=1; \
+			--override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended" || exit $$?; installed=1; \
 	fi; \
 	if [ "$$installed" = "1" ]; then \
 		echo "Tools were installed. Close this terminal, reopen it, and run 'make install' again."; exit 1; \
@@ -235,7 +248,7 @@ dmg: build ## macOS: build the DMG
 
 installer: build ## Windows: build the setup EXE (requires Inno Setup)
 	@test "$(OS)" = "windows" || { echo "Installer is Windows only."; exit 1; }
-	iscc /DMyAppVersion=$(VERSION) packaging/windows/rattracker.iss
+	MSYS_NO_PATHCONV=1 iscc /DMyAppVersion=$(VERSION) packaging/windows/rattracker.iss
 
 dist: ## Compile the app and put installers in dist/
 ifeq ($(OS),linux)

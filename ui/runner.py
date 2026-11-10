@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -171,6 +172,17 @@ class BackendRunner(QObject):
         if self.process is None:
             return
         self._was_cancelled = True
+        if sys.platform == "win32" and self.process.processId():
+            # A Windows venv's python.exe is a launcher. Killing only that
+            # process leaves its interpreter child running and holding videos.
+            try:
+                subprocess.run(
+                    ["taskkill", "/PID", str(self.process.processId()), "/T", "/F"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    creationflags=subprocess.CREATE_NO_WINDOW, timeout=10,
+                )
+            except (OSError, subprocess.TimeoutExpired):
+                pass
         self.process.kill()
 
     def _read_stdout(self) -> None:

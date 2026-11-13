@@ -165,3 +165,42 @@ jobs:
             # dist/*.dmg
             dist/*setup.exe
           if-no-files-found: error
+
+  release:
+    name: release
+    needs: [version, build]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Check existing release
+        id: check
+        shell: bash
+        run: |
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release $VERSION already exists, skipping"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download installers
+        if: steps.check.outputs.exists == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: rattracker-${{ needs.version.outputs.version }}-*
+          path: release-files
+          merge-multiple: true
+
+      - name: Create release
+        if: steps.check.outputs.exists == 'false'
+        shell: bash
+        run: |
+          gh release create "$VERSION" release-files/* \
+            --target "$GITHUB_SHA" \
+            --title "$VERSION" \
+            --notes ""
